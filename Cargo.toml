@@ -1,0 +1,16 @@
+[package]
+name = "scatter-gather"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tungstenite = { version= "*", features= ["rustls-tls"]}
+tokio = { version= "*", features = ["full"] }
+futures-channel = "*"
+futures-util = "*"
+tokio-tungstenite = { version= "*", features= ["rustls-tls"] }
+url = "*"
+redis = { version = "0.19.0", features = ["tokio-comp", "tokio-native-tls-comp"] }
+futures = "*"
