@@ -1,0 +1,3 @@
+use redis::{
+    aio::MultiplexedConnection,
+};
