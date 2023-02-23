@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     }
 
     let SERVER_CONFIG: ServerConfig<binance_interceptor> = ServerConfig {
-        url : String::from(""),
+        url : String::from("wss://stream.binance.com:9443/ws/bnbbtc@depth@100ms"),
         prefix: String::from(""),
         protocol: binance_interceptor
     };

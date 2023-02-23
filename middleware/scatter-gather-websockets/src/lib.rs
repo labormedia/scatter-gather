@@ -24,7 +24,6 @@ impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
     pub async fn connect(&self) -> WebSocketStream<MaybeTlsStream<TcpStream>> {
         let url = url::Url::parse(&self.config.url).expect("Expected Websocket Url");
         let (a,_b) = connect_async(url).await.expect("Connection to Websocket server failed");
-        // let (write, read) = a.split();
         a
     }
 }
