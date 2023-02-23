@@ -3,15 +3,24 @@ use tokio::io::{AsyncReadExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::collections::HashMap;
+use std::{
+    fmt,
+    task::{
+        Poll,
+        Context
+    },
+    error
+};
 use futures::{
     channel::mpsc,
     SinkExt
 };
 
-pub mod source_specs;
+pub mod middleware_specs;
 pub mod connection;
 
 use self::connection::*;
+use self::middleware_specs::*;
 
 pub trait Executor {
     fn exec(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>);
@@ -23,16 +32,35 @@ impl<F: Fn(Pin<Box<dyn Future<Output = ()> + Send>>)> Executor for F {
     }
 }
 
-pub trait Handler {
-    fn poll(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>);
+pub enum ConnectionHandlerEvent<TCustom, TError> {
+    Close(TError),
+    Custom(TCustom)
 }
 
-pub struct PoolConnection<THandler: Handler> {
-    conn: Connection,
+pub trait ConnectionHandler: Interceptor + Send + 'static {
+
+    type InEvent: fmt::Debug + Send + 'static;
+    type OutEvent: fmt::Debug + Send + 'static;
+    type Error: error::Error + fmt::Debug + Send + 'static;
+
+    fn poll(
+        &mut self,
+        cx: &mut Context<'_>,
+    ) -> Poll<
+        ConnectionHandlerEvent<Self::OutEvent, Self::Error>
+    >;
+
+    fn inject_event(&mut self, event: Self::InEvent);
+}
+
+/// Pool Connection is initialized with the handler defined 
+/// for the specific Connection::source_type::handler.
+pub struct PoolConnection<THandler: ConnectionHandler> {
+    conn: Pin<Box<Connection<THandler>>>,
     handler: THandler
 }
 
-pub enum PoolEvent<THandler: Handler> {
+pub enum PoolEvent<THandler: ConnectionHandler> {
     ConnectionEstablished(PoolConnection<THandler>),
     ConnectionClosed(PoolConnection<THandler>),
     ConnectionEvent(PoolConnection<THandler>),
@@ -41,7 +69,7 @@ pub enum PoolEvent<THandler: Handler> {
 
 impl<THandler> PoolEvent<THandler> 
 where
-    THandler: Handler
+    THandler: ConnectionHandler
 {
     fn notify_event<'a>(
         &'a self, 
@@ -56,17 +84,17 @@ where
     }
 }
 
-pub struct Pool<THandler: Handler, TExecutor: Executor> {
+pub struct Pool<THandler: ConnectionHandler> {
     local_id: usize,
     counters: ConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
     established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
-    executor: TExecutor
+    executor: Option<Box<dyn Executor + Send>>
 }
 
-pub struct PendingConnection<THandler: Handler>(PoolConnection<THandler>);
+pub struct PendingConnection<THandler: ConnectionHandler>(PoolConnection<THandler>);
 
-pub struct EstablishedConnection<THandler: Handler>(PoolConnection<THandler>);
+pub struct EstablishedConnection<THandler: ConnectionHandler>(PoolConnection<THandler>);
 
 #[derive(Debug, Clone)]
 pub struct ConnectionCounters {

@@ -1,8 +1,8 @@
-use crate::source_specs::*;
+use crate::middleware_specs::*;
 
-pub struct Connection {
+pub struct Connection<TInterceptor: Interceptor> {
     id: ConnectionId,
-    source_type: ServerConfig
+    source_type: ServerConfig<TInterceptor>
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
