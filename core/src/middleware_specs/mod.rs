@@ -2,10 +2,11 @@
 // struct dummy {
 //     i: i32
 // }
-pub trait Interceptor {
-    type InterceptorInEvent;
-    type InterceptorOutEvent;
-    type InterceptorError;
+use std::fmt;
+pub trait Interceptor: Send + 'static {
+    type InterceptorInEvent: fmt::Debug + Send + 'static;
+    type InterceptorOutEvent: fmt::Debug + Send + 'static;
+    type InterceptorError: fmt::Debug + Send + 'static;
 
     fn inject_event(&mut self, event: Self::InterceptorInEvent);
 }

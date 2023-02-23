@@ -2,7 +2,7 @@ use scatter_gather_core::middleware_specs::{
     ServerConfig,
     Interceptor
 };
-use scatter_gather_websockets as ws;
+use scatter_gather_websockets::WebSocketsMiddleware;
 use futures::StreamExt;
 
 #[tokio::main]
@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         prefix: String::from(""),
         protocol: binance_interceptor
     };
-    let ws_stream = ws::WebSocketsMiddleware::new(SERVER_CONFIG).connect().await;
+    let ws_stream = WebSocketsMiddleware::new(SERVER_CONFIG).connect().await;
     let (write, read) = ws_stream.split();
     let _ = read.fold(write, |write, m| async {
         match m  {

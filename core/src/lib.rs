@@ -37,7 +37,7 @@ pub enum ConnectionHandlerEvent<TCustom, TError> {
     Custom(TCustom)
 }
 
-pub trait ConnectionHandler: Interceptor + Send + 'static {
+pub trait ConnectionHandler: Send + 'static {
 
     type InEvent: fmt::Debug + Send + 'static;
     type OutEvent: fmt::Debug + Send + 'static;
@@ -55,19 +55,19 @@ pub trait ConnectionHandler: Interceptor + Send + 'static {
 
 /// Pool Connection is initialized with the handler defined 
 /// for the specific Connection::source_type::handler.
-pub struct PoolConnection<THandler: ConnectionHandler> {
+pub struct PoolConnection<THandler: Interceptor> {
     conn: Pin<Box<Connection<THandler>>>,
     handler: THandler
 }
 
-pub enum PoolEvent<THandler: ConnectionHandler> {
+pub enum PoolEvent<THandler: Interceptor> {
     ConnectionEstablished(PoolConnection<THandler>),
     ConnectionClosed(PoolConnection<THandler>),
     ConnectionEvent(PoolConnection<THandler>),
 }
 
 
-impl<THandler> PoolEvent<THandler> 
+impl<THandler: Interceptor> PoolEvent<THandler> 
 where
     THandler: ConnectionHandler
 {
@@ -79,12 +79,12 @@ where
         match self {
             PoolEvent::ConnectionEstablished(conn) => events.try_send(self),
             PoolEvent::ConnectionClosed(conn) => events.try_send(self),
-            _ => events.try_send(self)
+            PoolEvent::ConnectionEvent(conn) => events.try_send(self)
         }
     }
 }
 
-pub struct Pool<THandler: ConnectionHandler> {
+pub struct Pool<THandler: Interceptor> {
     local_id: usize,
     counters: ConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
@@ -92,9 +92,16 @@ pub struct Pool<THandler: ConnectionHandler> {
     executor: Option<Box<dyn Executor + Send>>
 }
 
-pub struct PendingConnection<THandler: ConnectionHandler>(PoolConnection<THandler>);
+impl<THandler: Interceptor> Pool<THandler> {
+    pub fn with_executor(mut self, e: Box<dyn Executor + Send>) -> Self {
+        self.executor = Some(e);
+        self
+    }
+}
 
-pub struct EstablishedConnection<THandler: ConnectionHandler>(PoolConnection<THandler>);
+pub struct PendingConnection<THandler: Interceptor>(PoolConnection<THandler>);
+
+pub struct EstablishedConnection<THandler: Interceptor>(PoolConnection<THandler>);
 
 #[derive(Debug, Clone)]
 pub struct ConnectionCounters {
