@@ -1,4 +1,8 @@
-use futures_util::{StreamExt};
+use futures_util::{
+    StreamExt,
+    future::BoxFuture,
+    stream::FuturesUnordered
+};
 use tokio::io::{AsyncReadExt};
 use std::future::Future;
 use std::pin::Pin;
@@ -84,18 +88,53 @@ where
     }
 }
 
-pub struct Pool<THandler: Interceptor> {
+pub struct PoolConfig {
+    task_event_buffer_size: usize
+}
+
+pub struct Pool<THandler: Interceptor, TError> {
     local_id: usize,
     counters: ConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
     established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
-    executor: Option<Box<dyn Executor + Send>>
+    local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    executor: Option<Box<dyn Executor + Send>>,
+    pending_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
+    pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
+    established_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
+    established_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
 }
 
-impl<THandler: Interceptor> Pool<THandler> {
+impl<THandler: Interceptor, TError> Pool<THandler, TError> {
+    pub fn new(local_id: usize, config: PoolConfig,limits: ConnectionLimits) -> Pool<THandler, TError> {
+        let (pending_connection_events_tx, pending_connection_events_rx) =
+            mpsc::channel(config.task_event_buffer_size);
+        let (established_connection_events_tx, established_connection_events_rx) =
+            mpsc::channel(config.task_event_buffer_size);
+        Pool {
+            local_id,
+            counters: ConnectionCounters::default() ,
+            pending: Default::default(),
+            established: Default::default(),
+            local_spawns: FuturesUnordered::new(),
+            executor: None,
+            pending_connection_events_tx,
+            pending_connection_events_rx,
+            established_connection_events_tx,
+            established_connection_events_rx,
+        }
+    }
     pub fn with_executor(mut self, e: Box<dyn Executor + Send>) -> Self {
         self.executor = Some(e);
         self
+    }
+    fn spawn(&mut self, task: BoxFuture<'static, ()>) {
+        if let Some(executor) = &mut self.executor {
+            executor.exec(task);
+        } else {
+            
+        }
+        
     }
 }
 
@@ -115,6 +154,19 @@ pub struct ConnectionCounters {
     established_incoming: u32,
     /// The current number of established outbound connections.
     established_outgoing: u32,
+}
+
+impl Default for ConnectionCounters {
+    fn default() -> Self {
+        Self {
+            limits: ConnectionLimits::default(),
+            pending_incoming: 4,
+            pending_outgoing: 4,
+            established_incoming: 4,
+            established_outgoing: 4
+        }
+    }
+
 }
 
 #[derive(Debug, Clone, Default)]
