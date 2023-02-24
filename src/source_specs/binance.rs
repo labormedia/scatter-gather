@@ -20,17 +20,16 @@
 //   }
 
 
-pub mod Binance {
-    use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize)]
-    struct BinanceDepth {
-        e: String,
-        E: u32,
-        s: String,
-        U: u32,
-        u: u32,
-        b: Vec<Vec<String>>,
-        a: Vec<Vec<String>>
-    }
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct BinanceDepth {
+    e: String,
+    E: u32,
+    s: String,
+    U: u32,
+    u: u32,
+    b: Vec<Vec<String>>,
+    a: Vec<Vec<String>>
 }

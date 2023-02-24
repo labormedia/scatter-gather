@@ -24,14 +24,17 @@ pub mod middleware_specs;
 pub mod connection;
 
 use self::connection::*;
-use self::middleware_specs::*;
+use self::middleware_specs::Interceptor;
 
-pub trait Executor {
-    fn exec(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>);
+pub trait Executor<T: Send> {
+    fn exec(&self, future: Pin<Box<dyn Future<Output = T> + Send>>);
 }
 
-impl<F: Fn(Pin<Box<dyn Future<Output = ()> + Send>>)> Executor for F {
-    fn exec(&self, f: Pin<Box<dyn Future<Output = ()> + Send>>) {
+impl<T, F: Fn(Pin<Box<dyn Future<Output = T> + Send>>)> Executor<T> for F 
+where
+T: Send
+{
+    fn exec(&self, f: Pin<Box<dyn Future<Output = T> + Send>>) {
         self(f)
     }
 }
@@ -89,24 +92,27 @@ where
 }
 
 pub struct PoolConfig {
-    task_event_buffer_size: usize
+    pub task_event_buffer_size: usize
 }
 
-pub struct Pool<THandler: Interceptor, TError> {
+pub struct Pool<T, THandler: Interceptor, TError> {
     local_id: usize,
     counters: ConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
     established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
-    local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = ()> + Send>>>,
-    executor: Option<Box<dyn Executor + Send>>,
+    pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
+    executor: Option<Box<dyn Executor<T> + Send>>,
     pending_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
     pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
     established_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
     established_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
 }
 
-impl<THandler: Interceptor, TError> Pool<THandler, TError> {
-    pub fn new(local_id: usize, config: PoolConfig,limits: ConnectionLimits) -> Pool<THandler, TError> {
+impl<T, THandler: Interceptor, TError> Pool<T, THandler, TError> 
+where
+T: Send
+{
+    pub fn new(local_id: usize, config: PoolConfig, limits: ConnectionLimits) -> Pool<T, THandler, TError> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         let (established_connection_events_tx, established_connection_events_rx) =
@@ -124,15 +130,17 @@ impl<THandler: Interceptor, TError> Pool<THandler, TError> {
             established_connection_events_rx,
         }
     }
-    pub fn with_executor(mut self, e: Box<dyn Executor + Send>) -> Self {
+    pub fn with_executor(mut self, e: Box<dyn Executor<T> + Send>) -> Self {
         self.executor = Some(e);
         self
     }
-    fn spawn(&mut self, task: BoxFuture<'static, ()>) {
+    pub fn spawn(&mut self, task: BoxFuture<'static, T>) {
         if let Some(executor) = &mut self.executor {
+            // If there's an executor defined for this Pool then we use it.
             executor.exec(task);
         } else {
-            
+            // Otherwise we push the task to a FuturesUnordered collection.
+            self.local_spawns.push(task);
         }
         
     }

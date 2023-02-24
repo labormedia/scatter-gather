@@ -4,6 +4,7 @@
 // }
 use std::fmt;
 pub trait Interceptor: Send + 'static {
+    type Input;
     type InterceptorInEvent: fmt::Debug + Send + 'static;
     type InterceptorOutEvent: fmt::Debug + Send + 'static;
     type InterceptorError: fmt::Debug + Send + 'static;
@@ -14,5 +15,5 @@ pub trait Interceptor: Send + 'static {
 pub struct ServerConfig<TInterceptor: Interceptor> {
     pub url: String,
     pub prefix: String,
-    pub protocol: TInterceptor,
+    pub interceptor: TInterceptor,
 }

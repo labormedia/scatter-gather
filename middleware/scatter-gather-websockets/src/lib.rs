@@ -23,7 +23,7 @@ pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
 impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
     pub fn new(config: ServerConfig<TInterceptor>) -> Self {
         Self {
-            config: config
+            config: config,
         }
     }
     pub async fn connect(&self) -> WebSocketStream<MaybeTlsStream<TcpStream>> {

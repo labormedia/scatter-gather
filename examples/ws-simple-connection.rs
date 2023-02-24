@@ -1,23 +1,34 @@
-use scatter_gather_core::middleware_specs::{
-    ServerConfig,
-    Interceptor
+use scatter_gather_core::{
+    middleware_specs::{
+        ServerConfig,
+        Interceptor
+    }
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
+use scatter_gather::source_specs::binance::BinanceDepth;
 use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    struct BinanceInterceptor;
+    struct BinanceInterceptor {}
+
+    #[derive(Debug)]
+    enum CustomBinanceInEvent {
+        Message(String),
+        Error(Box<dyn std::error::Error + Send>)
+    }
 
     impl BinanceInterceptor {
         fn new() -> Self {
-            Self
+            Self {}
         }
     }
 
     impl Interceptor for BinanceInterceptor {
+        type Input = BinanceDepth;
+
         type InterceptorError = ();
-        type InterceptorInEvent = ();
+        type InterceptorInEvent = CustomBinanceInEvent;
         type InterceptorOutEvent = ();
 
         fn inject_event(&mut self, event: Self::InterceptorInEvent) {
@@ -30,22 +41,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let config: ServerConfig<BinanceInterceptor> = ServerConfig {
         url : String::from("wss://stream.binance.com:9443/ws/bnbbtc@depth@100ms"),
         prefix: String::from(""),
-        protocol: binance_interceptor
+        interceptor: binance_interceptor
     };
-    let ws_stream = WebSocketsMiddleware::new(config).connect().await;
-    let (write, read) = ws_stream.split();
-    let _ = read.fold(write, |write, m| async {
-        match m  {
-            Err(e) => { 
-                println!("error {:?}", e);
-                ()
-            },
-            Ok(message) => {
-                let _ = println!("{:?}",message);
-                ()
-            },
-        };
-        write
-    }).await;
+    let mut ws_stream = WebSocketsMiddleware::new(config).connect().await;
+    while let Some(a) = ws_stream.next().await {
+        println!("test {:?}", a);
+    }
     Ok(())
 }
