@@ -43,8 +43,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         prefix: String::from(""),
         interceptor: binance_interceptor
     };
-    let mut ws_stream = WebSocketsMiddleware::new(config).connect().await;
-    while let Some(a) = ws_stream.next().await {
+    let mut connection = WebSocketsMiddleware::new(config).await;
+    while let Some(a) = connection.read.next().await {
         println!("test {:?}", a);
     }
     Ok(())

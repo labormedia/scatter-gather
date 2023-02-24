@@ -12,3 +12,4 @@ tokio = { version= "*", features = ["full"] }
 tokio-stream = "0.1"
 tokio-tungstenite = { version= "*", features= ["rustls-tls"] }
 url = "2.3.1"
+http = "*"

@@ -21,9 +21,9 @@
 
 
 
-use serde::{Deserialize, Serialize};
+use super::*;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct BinanceDepth {
     e: String,
     E: u32,
