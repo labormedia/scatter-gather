@@ -101,6 +101,7 @@ pub struct Pool<T, THandler: Interceptor, TError> {
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
     established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
+    pub local_streams: Pin<Box<dyn futures::Stream<Item = T>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
     pending_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
     pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
@@ -110,7 +111,7 @@ pub struct Pool<T, THandler: Interceptor, TError> {
 
 impl<T, THandler: Interceptor, TError> Pool<T, THandler, TError> 
 where
-T: Send
+T: Send + 'static
 {
     pub fn new(local_id: usize, config: PoolConfig, limits: ConnectionLimits) -> Pool<T, THandler, TError> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
@@ -123,6 +124,7 @@ T: Send
             pending: Default::default(),
             established: Default::default(),
             local_spawns: FuturesUnordered::new(),
+            local_streams: Box::pin(futures::stream::pending()),
             executor: None,
             pending_connection_events_tx,
             pending_connection_events_rx,
@@ -142,8 +144,13 @@ T: Send
             // Otherwise we push the task to a FuturesUnordered collection.
             self.local_spawns.push(task);
         }
-        
     }
+
+    pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = T>>>) {
+
+    }
+
+
 }
 
 pub struct PendingConnection<THandler: Interceptor>(PoolConnection<THandler>);
