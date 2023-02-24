@@ -54,8 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // type Message = (Option<Result<tungstenite::protocol::message::Message, tungstenite::error::Error>>, tokio_tungstenite::WebSocketStream<tokio_tungstenite::stream::MaybeTlsStream<tokio::net::TcpStream>>);
     let mut new_pool: Pool<_, BinanceInterceptor, <BinanceInterceptor as Interceptor>::InterceptorError> = Pool::new(0, pool_config, ConnectionLimits::default());
 
-    new_pool.spawn(ws_stream.into_future().boxed());
-    while let Some(a) = new_pool.local_spawns.next().await {
+    new_pool.collect_streams(Box::pin(ws_stream));
+    while let Some(a) = new_pool.local_streams.next().await {
         println!("test {:?}", a);
     }
     Ok(())

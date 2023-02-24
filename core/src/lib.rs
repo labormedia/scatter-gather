@@ -1,7 +1,8 @@
 use futures_util::{
     StreamExt,
     future::BoxFuture,
-    stream::FuturesUnordered
+    stream::FuturesUnordered,
+    stream::SelectAll
 };
 use tokio::io::{AsyncReadExt};
 use std::future::Future;
@@ -101,7 +102,7 @@ pub struct Pool<T, THandler: Interceptor, TError> {
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
     established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
-    pub local_streams: Pin<Box<dyn futures::Stream<Item = T>>>,
+    pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = T>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
     pending_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
     pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
@@ -124,7 +125,7 @@ T: Send + 'static
             pending: Default::default(),
             established: Default::default(),
             local_spawns: FuturesUnordered::new(),
-            local_streams: Box::pin(futures::stream::pending()),
+            local_streams: SelectAll::new(),
             executor: None,
             pending_connection_events_tx,
             pending_connection_events_rx,
@@ -136,7 +137,7 @@ T: Send + 'static
         self.executor = Some(e);
         self
     }
-    pub fn spawn(&mut self, task: BoxFuture<'static, T>) {
+    fn spawn(&mut self, task: BoxFuture<'static, T>) {
         if let Some(executor) = &mut self.executor {
             // If there's an executor defined for this Pool then we use it.
             executor.exec(task);
@@ -147,7 +148,7 @@ T: Send + 'static
     }
 
     pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = T>>>) {
-
+        self.local_streams.push(stream);
     }
 
 
