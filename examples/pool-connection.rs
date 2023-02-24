@@ -14,6 +14,7 @@ use futures::{StreamExt, FutureExt};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     struct BinanceInterceptor {}
+    struct BitstampInterceptor {}
 
     #[derive(Debug)]
     enum CustomBinanceInEvent {
@@ -22,6 +23,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     }
 
     impl BinanceInterceptor {
+        fn new() -> Self {
+            Self {}
+        }
+    }
+
+    impl BitstampInterceptor {
         fn new() -> Self {
             Self {}
         }
@@ -39,14 +46,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         }
     }
 
-    let binance_interceptor = BinanceInterceptor::new();
+    impl Interceptor for BitstampInterceptor {
+        type Input = BinanceDepth;
 
-    let config: ServerConfig<BinanceInterceptor> = ServerConfig {
+        type InterceptorError = ();
+        type InterceptorInEvent = CustomBinanceInEvent;
+        type InterceptorOutEvent = ();
+
+        fn inject_event(&mut self, event: Self::InterceptorInEvent) {
+            ()
+        }
+    }
+
+    let binance_interceptor = BinanceInterceptor::new();
+    let bitstamp_interceptor = BitstampInterceptor::new();
+
+    let config_binance: ServerConfig<BinanceInterceptor> = ServerConfig {
         url : String::from("wss://stream.binance.com:9443/ws/bnbbtc@depth@100ms"),
         prefix: String::from(""),
         interceptor: binance_interceptor
     };
-    let mut ws_stream = WebSocketsMiddleware::new(config).connect().await;
+    let config_bitstamp: ServerConfig<BitstampInterceptor> = ServerConfig { 
+        url: String::from("wss://ws.bitstamp.net"), 
+        prefix: String::from(""), 
+        interceptor: bitstamp_interceptor
+    };
+    let mut ws_stream1 = WebSocketsMiddleware::new(config_binance).connect().await;
+    let mut ws_stream2 = WebSocketsMiddleware::new(config_bitstamp).connect().await;
 
     let pool_config = PoolConfig {
         task_event_buffer_size: 1
@@ -54,7 +80,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // type Message = (Option<Result<tungstenite::protocol::message::Message, tungstenite::error::Error>>, tokio_tungstenite::WebSocketStream<tokio_tungstenite::stream::MaybeTlsStream<tokio::net::TcpStream>>);
     let mut new_pool: Pool<_, BinanceInterceptor, <BinanceInterceptor as Interceptor>::InterceptorError> = Pool::new(0, pool_config, ConnectionLimits::default());
 
-    new_pool.collect_streams(Box::pin(ws_stream));
+    new_pool.collect_streams(Box::pin(ws_stream1));
+    new_pool.collect_streams(Box::pin(ws_stream2));
     while let Some(a) = new_pool.local_streams.next().await {
         println!("test {:?}", a);
     }
