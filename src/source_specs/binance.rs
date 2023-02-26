@@ -21,6 +21,10 @@
 
 use super::*;
 use serde_json;
+use serde::{
+    de,
+    Deserializer
+};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct BinanceDepthInterceptor {
@@ -29,8 +33,16 @@ pub struct BinanceDepthInterceptor {
     s: String,
     U: u32,
     u: u32,
-    b: Vec<Vec<String>>,
-    a: Vec<Vec<String>>
+    b: Vec<Level>,
+    a: Vec<Level>
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
+pub struct Level{
+    #[serde(deserialize_with = "BinanceDepthInterceptor::quantity_from_str")]
+    left: f32,
+    #[serde(deserialize_with = "BinanceDepthInterceptor::quantity_from_str")]
+    right: f32
 }
 
 #[derive(Debug)]
@@ -46,6 +58,21 @@ impl BinanceDepthInterceptor {
     fn helper(input: String) -> Self {
         println!("Input: {:?}", input);
         serde_json::from_str(&input).expect("Parsing error.")
+    }
+    pub fn get_bids(&self) -> &Vec<Level> {
+        &self.b
+    }
+
+    pub fn get_asks(&self) -> &Vec<Level> {
+        &self.a
+    }
+
+    fn quantity_from_str<'a, D>(input: D) -> Result<f32, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let str_val = String::deserialize(input)?;
+        str_val.parse::<f32>().map_err(de::Error::custom)
     }
 }
 

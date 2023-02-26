@@ -20,8 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     };
     let mut connection = WebSocketsMiddleware::new(config).await;
     while let Some(a) = connection.read.next().await {
-        let data = connection.config.interceptor.intercept(a?.into_text()?);
+        let data: BinanceDepthInterceptor = connection.config.interceptor.intercept(a?.into_text()?);
         println!("Parsed: {:?}", data);
+        println!("Bids: {:?}", data.get_bids());
+        println!("Asks: {:?}", data.get_asks());
     }
     Ok(())
 }
