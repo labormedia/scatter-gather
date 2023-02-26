@@ -8,14 +8,6 @@ use tokio::io::{AsyncReadExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::collections::HashMap;
-use std::{
-    fmt,
-    task::{
-        Poll,
-        Context
-    },
-    error
-};
 use futures::{
     channel::mpsc,
     SinkExt
@@ -38,27 +30,6 @@ T: Send
     fn exec(&self, f: Pin<Box<dyn Future<Output = T> + Send>>) {
         self(f)
     }
-}
-
-pub enum ConnectionHandlerEvent<TCustom, TError> {
-    Close(TError),
-    Custom(TCustom)
-}
-
-pub trait ConnectionHandler: Send + 'static {
-
-    type InEvent: fmt::Debug + Send + 'static;
-    type OutEvent: fmt::Debug + Send + 'static;
-    type Error: error::Error + fmt::Debug + Send + 'static;
-
-    fn poll(
-        &mut self,
-        cx: &mut Context<'_>,
-    ) -> Poll<
-        ConnectionHandlerEvent<Self::OutEvent, Self::Error>
-    >;
-
-    fn inject_event(&mut self, event: Self::InEvent);
 }
 
 /// Pool Connection is initialized with the handler defined 

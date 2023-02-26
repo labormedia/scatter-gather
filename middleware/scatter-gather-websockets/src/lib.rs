@@ -63,7 +63,7 @@ impl fmt::Display for ConnectionHandlerError {
 }
 impl Error for ConnectionHandlerError {}
 
-impl<TInterceptor: Interceptor> sgc::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
+impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
     type InEvent = ();
     type OutEvent = ();
     type Error = ConnectionHandlerError;
@@ -76,11 +76,8 @@ impl<TInterceptor: Interceptor> sgc::ConnectionHandler for WebSocketsMiddleware<
             &mut self,
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<
-            sgc::ConnectionHandlerEvent<Self::OutEvent, Self::Error>
+            sgc::connection::ConnectionHandlerEvent<Self::OutEvent, Self::Error>
         > {
-        Poll::Ready(sgc::ConnectionHandlerEvent::Close(ConnectionHandlerError::Custom))
+        Poll::Ready(sgc::connection::ConnectionHandlerEvent::Close(ConnectionHandlerError::Custom))
     }
 }
-
-// let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-// println!("WebSocket handshake has been successfully completed");

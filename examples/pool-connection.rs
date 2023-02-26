@@ -8,7 +8,10 @@ use scatter_gather_core::{
     ConnectionLimits
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
-use scatter_gather::source_specs::binance::BinanceDepth;
+use scatter_gather::source_specs::{
+    binance::BinanceDepth,
+    bitstamp::BitstampDepth
+};
 use futures::{StreamExt, FutureExt};
 use tungstenite::Message;
 use futures::SinkExt;
@@ -49,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     }
 
     impl Interceptor for BitstampInterceptor {
-        type Input = BinanceDepth;
+        type Input = BitstampDepth;
 
         type InterceptorError = ();
         type InterceptorInEvent = CustomBinanceInEvent;

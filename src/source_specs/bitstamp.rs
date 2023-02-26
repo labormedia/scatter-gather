@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct InData {
+pub struct BitstampDepth {
     timestamp: String,
     microtimestamp: String,
     bids: Vec<String>,
