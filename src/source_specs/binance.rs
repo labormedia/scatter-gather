@@ -25,7 +25,7 @@ use serde_json;
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct BinanceDepthInterceptor {
     e: String,
-    E: u32,
+    E: i64,
     s: String,
     U: u32,
     u: u32,
@@ -33,20 +33,21 @@ pub struct BinanceDepthInterceptor {
     a: Vec<Vec<String>>
 }
 
+#[derive(Debug)]
+enum CustomDepthInEvent {
+    Message(String),
+    Error(Box<dyn std::error::Error + Send>)
+}
+
 impl BinanceDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
     fn helper(input: String) -> Self {
-        serde_json::from_str(&input).unwrap()
+        println!("Input: {:?}", input);
+        serde_json::from_str(&input).expect("Parsing error.")
     }
 }
-
-// #[derive(Debug)]
-// enum CustomDepthInEvent {
-//     Message(String),
-//     Error(Box<dyn std::error::Error + Send>)
-// }
 
 impl Interceptor for BinanceDepthInterceptor {
     type Input = String;

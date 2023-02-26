@@ -1,6 +1,7 @@
 use scatter_gather_core::{
     middleware_specs::{
-        ServerConfig
+        ServerConfig, 
+        Interceptor
     }
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
@@ -19,7 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     };
     let mut connection = WebSocketsMiddleware::new(config).await;
     while let Some(a) = connection.read.next().await {
-        println!("test {:?}", a);
+        let data = connection.config.interceptor.intercept(a?.into_text()?);
+        println!("Parsed: {:?}", data);
     }
     Ok(())
 }
