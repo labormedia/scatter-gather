@@ -3,22 +3,22 @@ use scatter_gather_core::{
         ServerConfig,
         Interceptor
     },
-    Pool,
-    PoolConfig,
-    ConnectionLimits
+    pool::{
+        Pool,
+        PoolConfig,
+        PoolConnectionLimits
+    }
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather::source_specs::{
-    binance::BinanceDepth,
+    binance::BinanceDepthInterceptor,
     bitstamp::BitstampDepth
 };
-use futures::{StreamExt, FutureExt};
-use tungstenite::Message;
-use futures::SinkExt;
+use futures::{StreamExt};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    struct BinanceInterceptor {}
+
     struct BitstampInterceptor {}
 
     #[derive(Debug)]
@@ -27,46 +27,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         Error(Box<dyn std::error::Error + Send>)
     }
 
-    impl BinanceInterceptor {
-        fn new() -> Self {
-            Self {}
-        }
-    }
-
     impl BitstampInterceptor {
         fn new() -> Self {
             Self {}
         }
     }
 
-    impl Interceptor for BinanceInterceptor {
-        type Input = BinanceDepth;
-
-        type InterceptorError = ();
-        type InterceptorInEvent = CustomBinanceInEvent;
-        type InterceptorOutEvent = ();
-
-        fn inject_event(&mut self, event: Self::InterceptorInEvent) {
-            ()
-        }
-    }
-
     impl Interceptor for BitstampInterceptor {
-        type Input = BitstampDepth;
+        type Input = String;
+        type Output = BitstampDepth;
 
-        type InterceptorError = ();
-        type InterceptorInEvent = CustomBinanceInEvent;
-        type InterceptorOutEvent = ();
-
-        fn inject_event(&mut self, event: Self::InterceptorInEvent) {
-            ()
+        fn intercept(&mut self, input: Self::Input) -> BitstampDepth {
+            BitstampDepth::default()
         }
     }
 
-    let binance_interceptor = BinanceInterceptor::new();
+    let binance_interceptor = BinanceDepthInterceptor::new();
     let bitstamp_interceptor = BitstampInterceptor::new();
 
-    let config_binance: ServerConfig<BinanceInterceptor> = ServerConfig {
+    let config_binance: ServerConfig<BinanceDepthInterceptor> = ServerConfig {
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         interceptor: binance_interceptor
@@ -85,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         task_event_buffer_size: 1
     };
     // type Message = (Option<Result<tungstenite::protocol::message::Message, tungstenite::error::Error>>, tokio_tungstenite::WebSocketStream<tokio_tungstenite::stream::MaybeTlsStream<tokio::net::TcpStream>>);
-    let mut new_pool: Pool<_, BinanceInterceptor, <BinanceInterceptor as Interceptor>::InterceptorError> = Pool::new(0, pool_config, ConnectionLimits::default());
+    let mut new_pool: Pool<_, BinanceDepthInterceptor, tungstenite::error::Error> = Pool::new(0, pool_config, PoolConnectionLimits::default());
 
     new_pool.collect_streams(Box::pin(connection1.read));
     new_pool.collect_streams(Box::pin(connection2.read));

@@ -4,6 +4,7 @@ use scatter_gather_core::middleware_specs::{
     ServerConfig,
     Interceptor
 };
+use sgc::connection::ConnectionHandlerEvent;
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use url::Url;
@@ -27,8 +28,7 @@ pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
 
 impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
     pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
-        let (a,b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
-        let (c,d) = a.split();
+        let (c,d) = Self::spin_up(&config).await;
         Self {
             config: config,
             // ws_stream: a,
@@ -36,10 +36,13 @@ impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
             read: d,
         }
     }
-    pub async fn connect(&self) -> WebSocketStream<MaybeTlsStream<TcpStream>> {
-        let url = url::Url::parse(&self.config.url).expect("Expected Websocket Url");
-        let (a,_b) = connect_async(url).await.expect("Connection to Websocket server failed");
-        a
+    
+    async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
+        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, 
+        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
+    ) {
+        let (a,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
+        a.split()
     }
 
     pub async fn send(&mut self, msg: String) {
@@ -65,7 +68,7 @@ impl Error for ConnectionHandlerError {}
 
 impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
     type InEvent = ();
-    type OutEvent = ();
+    type OutEvent = ConnectionHandlerEvent<(), ConnectionHandlerError>;
     type Error = ConnectionHandlerError;
 
     fn inject_event(&mut self, event: Self::InEvent) {
@@ -78,6 +81,7 @@ impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocket
         ) -> std::task::Poll<
             sgc::connection::ConnectionHandlerEvent<Self::OutEvent, Self::Error>
         > {
-        Poll::Ready(sgc::connection::ConnectionHandlerEvent::Close(ConnectionHandlerError::Custom))
+        // if self.connect()
+        Poll::Ready(sgc::connection::ConnectionHandlerEvent::ConnectionClosed(ConnectionHandlerEvent::ConnectionEvent(())))
     }
 }

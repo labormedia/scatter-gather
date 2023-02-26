@@ -19,12 +19,11 @@
 //     ]
 //   }
 
-
-
 use super::*;
+use serde_json;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct BinanceDepth {
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
+pub struct BinanceDepthInterceptor {
     e: String,
     E: u32,
     s: String,
@@ -32,4 +31,28 @@ pub struct BinanceDepth {
     u: u32,
     b: Vec<Vec<String>>,
     a: Vec<Vec<String>>
+}
+
+impl BinanceDepthInterceptor {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    fn helper(input: String) -> Self {
+        serde_json::from_str(&input).unwrap()
+    }
+}
+
+// #[derive(Debug)]
+// enum CustomDepthInEvent {
+//     Message(String),
+//     Error(Box<dyn std::error::Error + Send>)
+// }
+
+impl Interceptor for BinanceDepthInterceptor {
+    type Input = String;
+    type Output = BinanceDepthInterceptor;
+
+    fn intercept(&mut self, input: Self::Input) -> BinanceDepthInterceptor {
+        Self::helper(input)
+    }
 }

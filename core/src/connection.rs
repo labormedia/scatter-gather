@@ -23,9 +23,12 @@ impl ConnectionId {
     }
 }
 
+#[derive(Debug)]
 pub enum ConnectionHandlerEvent<TCustom, TError> {
-    Close(TError),
-    Custom(TCustom)
+    ConnectionEstablished(TCustom),
+    ConnectionClosed(TCustom),
+    ConnectionEvent(TCustom),
+    ConnectionError(TError)
 }
 
 pub trait ConnectionHandler: Send + 'static {
