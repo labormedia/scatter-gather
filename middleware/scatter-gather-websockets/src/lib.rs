@@ -1,23 +1,24 @@
 use futures::stream::{SplitSink, SplitStream};
 use scatter_gather_core as sgc;
 use scatter_gather_core::middleware_specs::{
-    ServerConfig,
-    Interceptor
+    ServerConfig
 };
 use sgc::connection::{
     ConnectionHandlerInEvent,
     ConnectionHandlerOutEvent, ConnectionHandler
 };
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::{
+    connect_async, 
+    tungstenite::protocol::Message,
+};
 use futures::{
     StreamExt, SinkExt
 };
 use tokio::net::TcpStream;
 use std::{
     task::Poll,
-    fmt,
-    error::Error
+    fmt
 };
 
 pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
@@ -71,12 +72,10 @@ impl fmt::Display for ConnectionHandlerError {
         write!(f, "Custom error")
     }
 }
-impl Error for ConnectionHandlerError {}
 
 impl<TInterceptor: ConnectionHandler> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
     type InEvent = ConnectionHandlerInEvent;
     type OutEvent = ConnectionHandlerOutEvent<()>;
-    // type Error = ConnectionHandlerError;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         

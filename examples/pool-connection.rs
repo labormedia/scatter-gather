@@ -1,6 +1,6 @@
 use scatter_gather_core::{
     middleware_specs::{
-        ServerConfig
+        ServerConfig, Interceptor
     },
     pool::{
         Pool,

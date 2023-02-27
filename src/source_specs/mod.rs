@@ -37,6 +37,15 @@ impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
     }
 }
 
+impl<T: Send + 'static + Default> Interceptor for &'static dyn Depth<T> {
+        type Input = String;
+        type Output = T;
+
+        fn intercept(&mut self, input: Self::Input) -> Self::Output {
+            T::default()
+        }
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct Level {
     #[serde(deserialize_with = "helpers::quantity_from_str")]
