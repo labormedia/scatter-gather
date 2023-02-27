@@ -24,7 +24,13 @@ impl ConnectionId {
 }
 
 #[derive(Debug)]
-pub enum ConnectionHandlerEvent<TCustom, TError> {
+pub enum ConnectionHandlerInEvent {
+    Connect,
+    Disconnect
+}
+
+#[derive(Debug)]
+pub enum ConnectionHandlerOutEvent<TCustom, TError> {
     ConnectionEstablished(TCustom),
     ConnectionClosed(TCustom),
     ConnectionEvent(TCustom),
@@ -41,7 +47,7 @@ pub trait ConnectionHandler: Send + 'static {
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<
-        ConnectionHandlerEvent<Self::OutEvent, Self::Error>
+        ConnectionHandlerOutEvent<Self::OutEvent, Self::Error>
     >;
 
     fn inject_event(&mut self, event: Self::InEvent);

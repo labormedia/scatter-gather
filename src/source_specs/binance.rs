@@ -18,13 +18,16 @@
 //       ]
 //     ]
 //   }
-
-use super::*;
-use serde_json;
-use serde::{
-    de,
-    Deserializer
+use super::{
+    Depth,
+    Interceptor,
+    helpers
 };
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct BinanceDepthInterceptor {
@@ -38,10 +41,10 @@ pub struct BinanceDepthInterceptor {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
-pub struct Level{
-    #[serde(deserialize_with = "BinanceDepthInterceptor::quantity_from_str")]
+pub struct Level {
+    #[serde(deserialize_with = "helpers::quantity_from_str")]
     left: f32,
-    #[serde(deserialize_with = "BinanceDepthInterceptor::quantity_from_str")]
+    #[serde(deserialize_with = "helpers::quantity_from_str")]
     right: f32
 }
 
@@ -55,24 +58,19 @@ impl BinanceDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
+}
+
+impl Depth<Level> for BinanceDepthInterceptor {
     fn helper(input: String) -> Self {
         println!("Input: {:?}", input);
         serde_json::from_str(&input).expect("Parsing error.")
     }
-    pub fn get_bids(&self) -> &Vec<Level> {
+    fn get_bids(&self) -> &Vec<Level> {
         &self.b
     }
 
-    pub fn get_asks(&self) -> &Vec<Level> {
+    fn get_asks(&self) -> &Vec<Level> {
         &self.a
-    }
-
-    fn quantity_from_str<'a, D>(input: D) -> Result<f32, D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let str_val = String::deserialize(input)?;
-        str_val.parse::<f32>().map_err(de::Error::custom)
     }
 }
 

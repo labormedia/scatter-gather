@@ -8,7 +8,7 @@ use super::{
         Connection,
         ConnectionId,
         ConnectionHandler,
-        ConnectionHandlerEvent
+        ConnectionHandlerOutEvent
     },
     middleware_specs::Interceptor
 };
@@ -59,30 +59,30 @@ pub struct PoolConfig {
 }
 
 pub struct Pool<T, THandler: Interceptor, TError> {
-    local_id: usize,
+    pool_id: usize,
     counters: PoolConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<THandler>>,
     established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = T>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
-    pending_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
-    pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
-    established_connection_events_tx: mpsc::Sender<ConnectionHandlerEvent<THandler, TError>>,
-    established_connection_events_rx: mpsc::Receiver<ConnectionHandlerEvent<THandler, TError>>,
+    pending_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<THandler, TError>>,
+    pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<THandler, TError>>,
+    established_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<THandler, TError>>,
+    established_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<THandler, TError>>,
 }
 
 impl<T, THandler: Interceptor, TError> Pool<T, THandler, TError> 
 where
 T: Send + 'static
 {
-    pub fn new(local_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, THandler, TError> {
+    pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, THandler, TError> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         let (established_connection_events_tx, established_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         Pool {
-            local_id,
+            pool_id,
             counters: PoolConnectionCounters::default() ,
             pending: Default::default(),
             established: Default::default(),

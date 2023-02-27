@@ -4,12 +4,14 @@ use scatter_gather_core::middleware_specs::{
     ServerConfig,
     Interceptor
 };
-use sgc::connection::ConnectionHandlerEvent;
+use sgc::connection::{
+    ConnectionHandlerInEvent,
+    ConnectionHandlerOutEvent
+};
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use url::Url;
 use futures::{
-    Future, StreamExt, SinkExt
+    StreamExt, SinkExt
 };
 use tokio::net::TcpStream;
 use std::{
@@ -28,12 +30,17 @@ pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
 
 impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
     pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
-        let (c,d) = Self::spin_up(&config).await;
+        let (mut write,read) = Self::spin_up(&config).await;
+        if let Some(init_handle) = &config.init_handle {
+            match write.send(Message::Text(init_handle.to_string())).await {
+                Ok(m) => println!("response {:?}", m),
+                Err(e) => println!("Initialization Error: {:?}", e)
+            };
+        };
         Self {
-            config: config,
-            // ws_stream: a,
-            write: c,
-            read: d,
+            config,
+            write,
+            read
         }
     }
     
@@ -67,8 +74,8 @@ impl fmt::Display for ConnectionHandlerError {
 impl Error for ConnectionHandlerError {}
 
 impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
-    type InEvent = ();
-    type OutEvent = ConnectionHandlerEvent<(), ConnectionHandlerError>;
+    type InEvent = ConnectionHandlerInEvent;
+    type OutEvent = ConnectionHandlerOutEvent<(), ConnectionHandlerError>;
     type Error = ConnectionHandlerError;
 
     fn inject_event(&mut self, event: Self::InEvent) {
@@ -79,9 +86,9 @@ impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocket
             &mut self,
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<
-            sgc::connection::ConnectionHandlerEvent<Self::OutEvent, Self::Error>
+            sgc::connection::ConnectionHandlerOutEvent<Self::OutEvent, Self::Error>
         > {
         // if self.connect()
-        Poll::Ready(sgc::connection::ConnectionHandlerEvent::ConnectionClosed(ConnectionHandlerEvent::ConnectionEvent(())))
+        Poll::Ready(sgc::connection::ConnectionHandlerOutEvent::ConnectionClosed(ConnectionHandlerOutEvent::ConnectionEvent(())))
     }
 }

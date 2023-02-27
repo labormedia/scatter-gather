@@ -13,5 +13,6 @@ pub trait Interceptor: Send + 'static {
 pub struct ServerConfig<TInterceptor: Interceptor> {
     pub url: String,
     pub prefix: String,
+    pub init_handle: Option<String>,
     pub interceptor: TInterceptor,
 }
