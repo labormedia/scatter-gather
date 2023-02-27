@@ -85,9 +85,7 @@ impl<TInterceptor: ConnectionHandler> sgc::connection::ConnectionHandler for Web
     fn poll(
             &mut self,
             cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<
-            sgc::connection::ConnectionHandlerOutEvent<Self::OutEvent>
-        > {
-        Poll::Ready(sgc::connection::ConnectionHandlerOutEvent::ConnectionClosed(ConnectionHandlerOutEvent::ConnectionEvent(())))
+        ) -> std::task::Poll<Self::OutEvent> {
+        Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
     }
 }

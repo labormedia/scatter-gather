@@ -7,12 +7,11 @@ use scatter_gather_core::{
         PoolConfig,
         PoolConnectionLimits
     },
-    connection::{ConnectionHandler, ConnectionHandlerInEvent, ConnectionHandlerOutEvent}
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather::source_specs::{
     binance::BinanceDepthInterceptor,
-    bitstamp::BitstampDepthInterceptor, 
+    bitstamp::BitstampDepthInterceptor,
     Depth,
     Level
 };
@@ -47,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // type Message = (Option<Result<tungstenite::protocol::message::Message, tungstenite::error::Error>>, tokio_tungstenite::WebSocketStream<tokio_tungstenite::stream::MaybeTlsStream<tokio::net::TcpStream>>);
     // let mut new_pool: Pool<WebSocketsMiddleware<_> = Pool::new(0, pool_config, PoolConnectionLimits::default());
 
-    let mut new_pool: Pool<WebSocketsMiddleware<BinanceDepthInterceptor>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config, PoolConnectionLimits::default());
+    let mut new_pool: Pool<WebSocketsMiddleware<&dyn Depth<Level>>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config, PoolConnectionLimits::default());
 
     new_pool.collect_streams(Box::pin(connection1.await.read));
     new_pool.collect_streams(Box::pin(connection2.await.read));

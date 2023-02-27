@@ -46,9 +46,7 @@ pub trait ConnectionHandler: Send + 'static {
     fn poll(
         &mut self,
         cx: &mut Context<'_>,
-    ) -> Poll<
-        ConnectionHandlerOutEvent<Self::OutEvent>
-    >;
+    ) -> Poll<Self::OutEvent>;
 
     fn inject_event(&mut self, event: Self::InEvent);
 }

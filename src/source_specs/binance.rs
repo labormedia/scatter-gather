@@ -61,13 +61,13 @@ impl BinanceDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-}
-
-impl Depth<Level> for BinanceDepthInterceptor {
     fn helper(&self, input: String) -> Self {
         println!("Input: {:?}", input);
         serde_json::from_str(&input).expect("Parsing error.")
     }
+}
+
+impl Depth<Level> for BinanceDepthInterceptor {
     fn get_bids(&self) -> &Vec<Level> {
         &self.b
     }
@@ -91,12 +91,11 @@ impl connection::ConnectionHandler for BinanceDepthInterceptor {
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
-            &mut self,
-            cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<
-            connection::ConnectionHandlerOutEvent<Self::OutEvent>
-        > {
-        Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string()))))
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::OutEvent> 
+    {
+        Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
     }
     fn inject_event(&mut self, event: Self::InEvent) {
         

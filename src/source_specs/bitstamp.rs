@@ -28,8 +28,6 @@ pub struct Data {
     asks: Vec<Level>,
 }
 
-
-
 #[derive(Debug)]
 enum CustomDepthInEvent {
     Message(String),
@@ -40,9 +38,6 @@ impl BitstampDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-}
-
-impl Depth<Level> for BitstampDepthInterceptor {
     fn helper(&self, input: String) -> Self {
         println!("Input: {:?}", input);
         match serde_json::from_str(&input){
@@ -56,6 +51,9 @@ impl Depth<Level> for BitstampDepthInterceptor {
             }
         }
     }
+}
+
+impl Depth<Level> for BitstampDepthInterceptor {
     fn get_bids(&self) -> &Vec<Level> {
         &self.data.bids
     }
@@ -75,17 +73,16 @@ impl Interceptor for BitstampDepthInterceptor {
     }
 }
 
-impl ConnectionHandler for BitstampDepthInterceptor {
+impl connection::ConnectionHandler for BitstampDepthInterceptor {
     type InEvent = connection::ConnectionHandlerInEvent;
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
-            &mut self,
-            cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<
-            connection::ConnectionHandlerOutEvent<Self::OutEvent>
-        > {
-        Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string()))))
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::OutEvent>
+    {
+        Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
     }
     fn inject_event(&mut self, event: Self::InEvent) {
         

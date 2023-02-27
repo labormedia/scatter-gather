@@ -1,14 +1,40 @@
-use scatter_gather_core::middleware_specs::Interceptor;
+use scatter_gather_core::{
+    middleware_specs::Interceptor, 
+    connection::{
+        ConnectionHandler,
+        ConnectionHandlerInEvent,
+        ConnectionHandlerOutEvent
+    }
+};
 pub mod binance;
 pub mod bitstamp;
 use serde::{
     Serialize,
     Deserialize,
 };
-pub trait Depth<T> {
-    fn helper(&self, input: String) -> Self;
+use tungstenite::Message;
+use std::task::Poll;
+
+pub trait Depth<T>: Send + Sync {
+    // fn helper(&self, input: String) -> Self;
     fn get_bids(&self) -> &Vec<T>;
     fn get_asks(&self) -> &Vec<T>;
+}
+
+impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
+    type InEvent = ConnectionHandlerInEvent;
+    type OutEvent = ConnectionHandlerOutEvent<Message>;
+
+    fn poll(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::OutEvent> 
+    {
+        Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("Hello".to_string())))
+    }
+    fn inject_event(&mut self, event: Self::InEvent) {
+        
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
