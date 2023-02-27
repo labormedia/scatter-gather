@@ -1,6 +1,5 @@
 use super::{
     Depth,
-    helpers,
     Interceptor,
     Level
 };
@@ -74,7 +73,7 @@ impl Interceptor for BitstampDepthInterceptor {
 }
 
 impl connection::ConnectionHandler for BitstampDepthInterceptor {
-    type InEvent = connection::ConnectionHandlerInEvent;
+    type InEvent = connection::ConnectionHandlerInEvent<Message>;
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
@@ -86,6 +85,9 @@ impl connection::ConnectionHandler for BitstampDepthInterceptor {
         Poll::Pending
     }
     fn inject_event(&mut self, event: Self::InEvent) {
+        
+    }
+    fn eject_event(&mut self, event: Self::OutEvent) {
         
     }
 }

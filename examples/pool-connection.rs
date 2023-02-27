@@ -5,8 +5,13 @@ use scatter_gather_core::{
     pool::{
         Pool,
         PoolConfig,
-        PoolConnectionLimits
-    },
+        PoolConnectionLimits, 
+        PoolConnection
+    }, 
+    connection::{
+        ConnectionHandler,
+        Connection
+    }
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather::source_specs::{
@@ -15,8 +20,13 @@ use scatter_gather::source_specs::{
     Depth,
     Level
 };
-use futures::{StreamExt};
+use futures::{StreamExt, Future};
 use tungstenite::Message;
+use std::any::type_name;
+
+fn type_of<T>(_: T) -> &'static str {
+    type_name::<T>()
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
@@ -48,10 +58,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let mut new_pool: Pool<WebSocketsMiddleware<&dyn Depth<Level>>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config, PoolConnectionLimits::default());
 
-    new_pool.collect_streams(Box::pin(connection1.await.read));
-    new_pool.collect_streams(Box::pin(connection2.await.read));
-    while let Some(a) = new_pool.local_streams.next().await {
-        println!("test {:?}", a);
+    new_pool.inject_connection(connection1);
+    // new_pool.spawn(connection1);
+    // new_pool.collect_streams(Box::pin(connection1.await.read));
+    // new_pool.collect_streams(Box::pin(connection2.await.read));
+    while let Some(a) = new_pool.local_spawns.next().await {
+        println!("test {:?} ", type_of(a));
     }
     Ok(())
 }
