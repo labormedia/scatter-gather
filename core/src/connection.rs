@@ -8,9 +8,9 @@ use std::{
     },
 };
 
-pub struct Connection<TInterceptor: Interceptor> {
+pub struct Connection<THandler: ConnectionHandler> {
     id: ConnectionId,
-    source_type: ServerConfig<TInterceptor>
+    source_type: ServerConfig<THandler>,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -30,24 +30,24 @@ pub enum ConnectionHandlerInEvent {
 }
 
 #[derive(Debug)]
-pub enum ConnectionHandlerOutEvent<TCustom, TError> {
+pub enum ConnectionHandlerOutEvent<TCustom> {
     ConnectionEstablished(TCustom),
     ConnectionClosed(TCustom),
     ConnectionEvent(TCustom),
-    ConnectionError(TError)
+    // ConnectionError(TError)
 }
 
 pub trait ConnectionHandler: Send + 'static {
 
     type InEvent: fmt::Debug + Send + 'static;
     type OutEvent: fmt::Debug + Send + 'static;
-    type Error: error::Error + fmt::Debug + Send + 'static;
+    // type Error: error::Error + fmt::Debug + Send + 'static;
 
     fn poll(
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<
-        ConnectionHandlerOutEvent<Self::OutEvent, Self::Error>
+        ConnectionHandlerOutEvent<Self::OutEvent>
     >;
 
     fn inject_event(&mut self, event: Self::InEvent);

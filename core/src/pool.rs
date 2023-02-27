@@ -25,22 +25,19 @@ use std::{
 use futures::{
     channel::mpsc
 };
-pub struct PoolConnection<THandler: Interceptor> {
-    conn: Pin<Box<Connection<THandler>>>,
-    handler: THandler
+pub struct PoolConnection<T: ConnectionHandler> {
+    conn: Pin<Box<Connection<T>>>,
+    handler: T
 }
 
-pub enum PoolEvent<THandler: Interceptor> {
-    ConnectionEstablished(PoolConnection<THandler>),
-    ConnectionClosed(PoolConnection<THandler>),
-    ConnectionEvent(PoolConnection<THandler>),
+pub enum PoolEvent<T: ConnectionHandler> {
+    ConnectionEstablished(PoolConnection<T>),
+    ConnectionClosed(PoolConnection<T>),
+    ConnectionEvent(PoolConnection<T>),
 }
 
 
-impl<THandler: Interceptor> PoolEvent<THandler> 
-where
-    THandler: ConnectionHandler
-{
+impl<T: ConnectionHandler> PoolEvent<T> {
     fn notify_event<'a>(
         &'a self, 
         mut events: mpsc::Sender<&'a Self>
@@ -58,25 +55,26 @@ pub struct PoolConfig {
     pub task_event_buffer_size: usize
 }
 
-pub struct Pool<T, THandler: Interceptor, TError> {
+pub struct Pool<T: ConnectionHandler, U> {
     pool_id: usize,
     counters: PoolConnectionCounters,
-    pending: HashMap<ConnectionId, PendingConnection<THandler>>,
-    established: HashMap<ConnectionId, EstablishedConnection<THandler>>,
-    pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
-    pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = T>>>>,
-    executor: Option<Box<dyn Executor<T> + Send>>,
-    pending_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<THandler, TError>>,
-    pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<THandler, TError>>,
-    established_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<THandler, TError>>,
-    established_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<THandler, TError>>,
+    pending: HashMap<ConnectionId, PendingConnection<T>>,
+    established: HashMap<ConnectionId, EstablishedConnection<T>>,
+    pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = U> + Send>>>,
+    pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>,
+    executor: Option<Box<dyn Executor<U> + Send>>,
+    pending_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
+    pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
+    established_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
+    established_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
 }
 
-impl<T, THandler: Interceptor, TError> Pool<T, THandler, TError> 
+impl<T, U> Pool<T, U> 
 where
-T: Send + 'static
+T: ConnectionHandler,
+U: Send + 'static
 {
-    pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, THandler, TError> {
+    pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, U> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         let (established_connection_events_tx, established_connection_events_rx) =
@@ -95,11 +93,11 @@ T: Send + 'static
             established_connection_events_rx,
         }
     }
-    pub fn with_executor(mut self, e: Box<dyn Executor<T> + Send>) -> Self {
+    pub fn with_executor(mut self, e: Box<dyn Executor<U> + Send>) -> Self {
         self.executor = Some(e);
         self
     }
-    fn spawn(&mut self, task: BoxFuture<'static, T>) {
+    fn spawn(&mut self, task: BoxFuture<'static, U>) {
         if let Some(executor) = &mut self.executor {
             // If there's an executor defined for this Pool then we use it.
             executor.exec(task);
@@ -109,16 +107,16 @@ T: Send + 'static
         }
     }
 
-    pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = T>>>) {
+    pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
         self.local_streams.push(stream);
     }
 
 
 }
 
-pub struct PendingConnection<THandler: Interceptor>(PoolConnection<THandler>);
+pub struct PendingConnection<T: ConnectionHandler> (PoolConnection<T>);
 
-pub struct EstablishedConnection<THandler: Interceptor>(PoolConnection<THandler>);
+pub struct EstablishedConnection<T: ConnectionHandler> (PoolConnection<T>);
 
 #[derive(Debug, Clone)]
 pub struct PoolConnectionCounters {

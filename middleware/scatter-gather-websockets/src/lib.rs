@@ -6,7 +6,7 @@ use scatter_gather_core::middleware_specs::{
 };
 use sgc::connection::{
     ConnectionHandlerInEvent,
-    ConnectionHandlerOutEvent
+    ConnectionHandlerOutEvent, ConnectionHandler
 };
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
@@ -20,7 +20,7 @@ use std::{
     error::Error
 };
 
-pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
+pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
     pub config: ServerConfig<TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
@@ -28,7 +28,7 @@ pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
     pub read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
 }
 
-impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
+impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
     pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
         let (mut write,read) = Self::spin_up(&config).await;
         if let Some(init_handle) = &config.init_handle {
@@ -73,10 +73,10 @@ impl fmt::Display for ConnectionHandlerError {
 }
 impl Error for ConnectionHandlerError {}
 
-impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
+impl<TInterceptor: ConnectionHandler> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
     type InEvent = ConnectionHandlerInEvent;
-    type OutEvent = ConnectionHandlerOutEvent<(), ConnectionHandlerError>;
-    type Error = ConnectionHandlerError;
+    type OutEvent = ConnectionHandlerOutEvent<()>;
+    // type Error = ConnectionHandlerError;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         
@@ -86,9 +86,8 @@ impl<TInterceptor: Interceptor> sgc::connection::ConnectionHandler for WebSocket
             &mut self,
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<
-            sgc::connection::ConnectionHandlerOutEvent<Self::OutEvent, Self::Error>
+            sgc::connection::ConnectionHandlerOutEvent<Self::OutEvent>
         > {
-        // if self.connect()
         Poll::Ready(sgc::connection::ConnectionHandlerOutEvent::ConnectionClosed(ConnectionHandlerOutEvent::ConnectionEvent(())))
     }
 }

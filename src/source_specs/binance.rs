@@ -39,6 +39,9 @@ pub struct BinanceDepthInterceptor {
     b: Vec<Level>,
     a: Vec<Level>
 }
+use scatter_gather_core::connection;
+use std::task::Poll;
+use tungstenite::Message;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct Level {
@@ -61,7 +64,7 @@ impl BinanceDepthInterceptor {
 }
 
 impl Depth<Level> for BinanceDepthInterceptor {
-    fn helper(input: String) -> Self {
+    fn helper(&self, input: String) -> Self {
         println!("Input: {:?}", input);
         serde_json::from_str(&input).expect("Parsing error.")
     }
@@ -79,6 +82,23 @@ impl Interceptor for BinanceDepthInterceptor {
     type Output = BinanceDepthInterceptor;
 
     fn intercept(&mut self, input: Self::Input) -> BinanceDepthInterceptor {
-        Self::helper(input)
+        Self::helper(&self, input)
+    }
+}
+
+impl connection::ConnectionHandler for BinanceDepthInterceptor {
+    type InEvent = connection::ConnectionHandlerInEvent;
+    type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
+
+    fn poll(
+            &mut self,
+            cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<
+            connection::ConnectionHandlerOutEvent<Self::OutEvent>
+        > {
+        Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string()))))
+    }
+    fn inject_event(&mut self, event: Self::InEvent) {
+        
     }
 }

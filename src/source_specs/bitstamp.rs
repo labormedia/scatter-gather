@@ -1,14 +1,17 @@
 use super::{
     Depth,
     helpers,
-    Interceptor
+    Interceptor,
+    Level
 };
+use scatter_gather_core::connection::{ConnectionHandler, self, ConnectionHandlerOutEvent};
 use serde_json;
 use serde::{
     Serialize,
     Deserialize,
 };
-use std::error::Error;
+use tungstenite::Message;
+use std::task::Poll;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct BitstampDepthInterceptor {
@@ -25,13 +28,7 @@ pub struct Data {
     asks: Vec<Level>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
-pub struct Level {
-    #[serde(deserialize_with = "helpers::quantity_from_str")]
-    left: f32,
-    #[serde(deserialize_with = "helpers::quantity_from_str")]
-    right: f32
-}
+
 
 #[derive(Debug)]
 enum CustomDepthInEvent {
@@ -46,7 +43,7 @@ impl BitstampDepthInterceptor {
 }
 
 impl Depth<Level> for BitstampDepthInterceptor {
-    fn helper(input: String) -> Self {
+    fn helper(&self, input: String) -> Self {
         println!("Input: {:?}", input);
         match serde_json::from_str(&input){
             Ok(a) => {
@@ -73,7 +70,24 @@ impl Interceptor for BitstampDepthInterceptor {
     type Output = BitstampDepthInterceptor;
 
     fn intercept(&mut self, input: Self::Input) -> BitstampDepthInterceptor {
-        let a = Self::helper(input);
+        let a = Self::helper(&self, input);
         a
+    }
+}
+
+impl ConnectionHandler for BitstampDepthInterceptor {
+    type InEvent = connection::ConnectionHandlerInEvent;
+    type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
+
+    fn poll(
+            &mut self,
+            cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<
+            connection::ConnectionHandlerOutEvent<Self::OutEvent>
+        > {
+        Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string()))))
+    }
+    fn inject_event(&mut self, event: Self::InEvent) {
+        
     }
 }

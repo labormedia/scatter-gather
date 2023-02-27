@@ -1,11 +1,22 @@
 use scatter_gather_core::middleware_specs::Interceptor;
 pub mod binance;
 pub mod bitstamp;
-
+use serde::{
+    Serialize,
+    Deserialize,
+};
 pub trait Depth<T> {
-    fn helper(input: String) -> Self;
+    fn helper(&self, input: String) -> Self;
     fn get_bids(&self) -> &Vec<T>;
     fn get_asks(&self) -> &Vec<T>;
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
+pub struct Level {
+    #[serde(deserialize_with = "helpers::quantity_from_str")]
+    left: f32,
+    #[serde(deserialize_with = "helpers::quantity_from_str")]
+    right: f32
 }
 
 pub mod helpers {

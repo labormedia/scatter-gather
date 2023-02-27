@@ -2,7 +2,7 @@
 // struct dummy {
 //     i: i32
 // }
-
+use super::connection::ConnectionHandler;
 pub trait Interceptor: Send + 'static {
     type Input;
     type Output;
@@ -10,9 +10,9 @@ pub trait Interceptor: Send + 'static {
     fn intercept(&mut self, input: Self::Input) -> Self::Output;
 }
 
-pub struct ServerConfig<TInterceptor: Interceptor> {
+pub struct ServerConfig<THandler: ConnectionHandler> {
     pub url: String,
     pub prefix: String,
     pub init_handle: Option<String>,
-    pub interceptor: TInterceptor,
+    pub handler: THandler,
 }
