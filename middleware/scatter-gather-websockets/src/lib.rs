@@ -2,8 +2,10 @@ use scatter_gather_core as sgc;
 use scatter_gather_core::middleware_specs::ServerConfig;
 use sgc::connection::{
     ConnectionHandlerInEvent,
-    ConnectionHandlerOutEvent, ConnectionHandler
+    ConnectionHandlerOutEvent, 
+    ConnectionHandler
 };
+use sgc::middleware_specs::Interceptor;
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{
     connect_async, 
@@ -13,10 +15,13 @@ use tokio::net::TcpStream;
 use futures::{
     StreamExt, SinkExt,
     stream::{SplitSink, SplitStream},
-    task::Poll
+    task::Poll,
+    Future,
+    future::poll_fn
 };
 use std::fmt;
 
+#[derive(Debug)]
 pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
     pub config: ServerConfig<TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
@@ -69,11 +74,15 @@ impl fmt::Display for ConnectionHandlerError {
     }
 }
 
-impl<TInterceptor: ConnectionHandler> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
-    type InEvent = ConnectionHandlerInEvent;
+impl<TInterceptor: ConnectionHandler + Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
+    type InEvent = ConnectionHandlerInEvent<Message>;
     type OutEvent = ConnectionHandlerOutEvent<()>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
+        println!("Hello Future! InEvent: {:?}", event);
+    }
+
+    fn eject_event(&mut self, event: Self::OutEvent) {
         
     }
 
@@ -82,8 +91,25 @@ impl<TInterceptor: ConnectionHandler> sgc::connection::ConnectionHandler for Web
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<Self::OutEvent> 
     {
-        &self.config;
-        // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
-        Poll::Pending
+        loop {
+            match &self.read.poll_next_unpin(cx) {
+                Poll::Ready(None) => {},
+                Poll::Ready(a) => {
+                    println!("Read message: {:?}", a);
+                },
+                Poll::Pending => {}
+            }
+            return Poll::Pending
+        } 
+
+    }
+}
+
+impl<TInterceptor: ConnectionHandler + Interceptor> Into<scatter_gather_core::connection::Connection<TInterceptor>> for WebSocketsMiddleware<TInterceptor> {
+    fn into(self) -> scatter_gather_core::connection::Connection<TInterceptor> {
+        scatter_gather_core::connection::Connection {
+            id: scatter_gather_core::connection::ConnectionId::new(0),
+            source_type: self.config
+        }
     }
 }

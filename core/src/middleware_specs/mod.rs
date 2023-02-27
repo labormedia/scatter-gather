@@ -10,6 +10,7 @@ pub trait Interceptor: Send + 'static {
     fn intercept(&mut self, input: Self::Input) -> Self::Output;
 }
 
+#[derive(Debug)]
 pub struct ServerConfig<THandler: ConnectionHandler> {
     pub url: String,
     pub prefix: String,

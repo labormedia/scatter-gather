@@ -1,3 +1,5 @@
+use crate::middleware_specs;
+
 /// Pool Connection is initialized with the handler defined 
 /// for the specific Connection::source_type::handler.
 /// 
@@ -8,15 +10,18 @@ use super::{
         Connection,
         ConnectionId,
         ConnectionHandler,
+        ConnectionHandlerInEvent,
         ConnectionHandlerOutEvent
     },
 };
 use std::{
     collections::HashMap,
-    pin::Pin,
+    pin::Pin, 
+    fmt::Debug,
 };
 use futures::{
     channel::mpsc,
+    StreamExt,
     task::{
         Poll,
         Context
@@ -30,7 +35,8 @@ use futures::{
 };
 pub struct PoolConnection<T: ConnectionHandler> {
     conn: Pin<Box<Connection<T>>>,
-    handler: T
+    handler: T,
+    event: mpsc::Sender<ConnectionHandlerInEvent<T>>
 }
 
 pub enum PoolEvent<T: ConnectionHandler> {
@@ -58,7 +64,7 @@ pub struct PoolConfig {
     pub task_event_buffer_size: usize
 }
 
-pub struct Pool<T: ConnectionHandler, U> {
+pub struct Pool<T: ConnectionHandler + Debug, U> {
     pool_id: usize,
     counters: PoolConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<T>>,
@@ -76,7 +82,7 @@ pub struct Pool<T: ConnectionHandler, U> {
 
 impl<T, U> Pool<T, U> 
 where
-T: ConnectionHandler,
+T: ConnectionHandler + Debug,
 U: Send + 'static
 {
     pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, U> {
@@ -102,7 +108,7 @@ U: Send + 'static
         self.executor = Some(e);
         self
     }
-    fn spawn(&mut self, task: BoxFuture<'static, T>) {
+    pub fn spawn(&mut self, task: BoxFuture<'static, T>) {
         if let Some(executor) = &mut self.executor {
             // If there's an executor defined for this Pool then we use it.
             executor.exec(task);
@@ -111,12 +117,20 @@ U: Send + 'static
             self.local_spawns.push(task);
         }
     }
+    pub fn inject_connection(&self, conn: impl Future<Output = T>) {
+        ()
+    }
 
     pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
         self.local_streams.push(stream);
     }
 
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
+        match self.established_connection_events_rx.poll_next_unpin(cx) {
+            Poll::Pending => {},
+            Poll::Ready(None) => println!("Pool is None"),
+            Poll::Ready(Some(a)) => { println!("Received from connection handler: {:?}", a); }
+        };
         Poll::Pending
     }
 }

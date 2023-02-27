@@ -13,7 +13,10 @@ use serde::{
     Deserialize,
 };
 use tungstenite::Message;
-use std::task::Poll;
+use futures::{
+    task::Poll
+};
+use std::fmt::Debug;
 
 pub trait Depth<T>: Send + Sync {
     // fn helper(&self, input: String) -> Self;
@@ -22,7 +25,7 @@ pub trait Depth<T>: Send + Sync {
 }
 
 impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
-    type InEvent = ConnectionHandlerInEvent;
+    type InEvent = ConnectionHandlerInEvent<Message>;
     type OutEvent = ConnectionHandlerOutEvent<Message>;
 
     fn poll(
@@ -36,6 +39,9 @@ impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
     fn inject_event(&mut self, event: Self::InEvent) {
         
     }
+    fn eject_event(&mut self, event: Self::OutEvent) {
+        
+    }
 }
 
 impl<T: Send + 'static + Default> Interceptor for &'static dyn Depth<T> {
@@ -45,6 +51,12 @@ impl<T: Send + 'static + Default> Interceptor for &'static dyn Depth<T> {
         fn intercept(&mut self, input: Self::Input) -> Self::Output {
             T::default()
         }
+}
+
+impl<T: Send + 'static + Default> Debug for dyn Depth<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Depth: {:?}", self)
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
@@ -74,5 +86,20 @@ pub mod helpers {
     {
         let str_val = String::deserialize(input)?;
         str_val.parse::<String>().map_err(de::Error::custom)
+    }
+    pub fn parse<'a, D, T>(input: &str )
+    where
+        D: Deserializer<'a>
+    {
+        let _: f32 = match serde_json::from_str(input){
+            Ok(a) => {
+                println!("Input: {:?}", a);
+                a
+            },
+            Err(e) => {
+                println!("Dropping failed parsing: {:?}", e);
+                0.0
+            }
+        };
     }
 }

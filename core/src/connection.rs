@@ -9,8 +9,8 @@ use std::{
 };
 
 pub struct Connection<THandler: ConnectionHandler> {
-    id: ConnectionId,
-    source_type: ServerConfig<THandler>,
+    pub id: ConnectionId,
+    pub source_type: ServerConfig<THandler>,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -24,9 +24,10 @@ impl ConnectionId {
 }
 
 #[derive(Debug)]
-pub enum ConnectionHandlerInEvent {
+pub enum ConnectionHandlerInEvent<T> {
     Connect,
-    Disconnect
+    Disconnect,
+    Intercept(T)
 }
 
 #[derive(Debug)]
@@ -49,4 +50,5 @@ pub trait ConnectionHandler: Send + 'static {
     ) -> Poll<Self::OutEvent>;
 
     fn inject_event(&mut self, event: Self::InEvent);
+    fn eject_event(&mut self, event: Self::OutEvent);
 }

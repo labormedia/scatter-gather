@@ -21,13 +21,15 @@
 use super::{
     Depth,
     Interceptor,
-    helpers
+    helpers,
+    Level
 };
 use serde::{
     Deserialize,
     Serialize,
 };
 use serde_json;
+use futures::Future;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct BinanceDepthInterceptor {
@@ -39,17 +41,9 @@ pub struct BinanceDepthInterceptor {
     b: Vec<Level>,
     a: Vec<Level>
 }
-use scatter_gather_core::connection;
+use scatter_gather_core::connection::{self, ConnectionHandler, ConnectionHandlerOutEvent, ConnectionHandlerInEvent};
 use std::task::Poll;
 use tungstenite::Message;
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
-pub struct Level {
-    #[serde(deserialize_with = "helpers::quantity_from_str")]
-    left: f32,
-    #[serde(deserialize_with = "helpers::quantity_from_str")]
-    right: f32
-}
 
 #[derive(Debug)]
 enum CustomDepthInEvent {
@@ -87,7 +81,7 @@ impl Interceptor for BinanceDepthInterceptor {
 }
 
 impl connection::ConnectionHandler for BinanceDepthInterceptor {
-    type InEvent = connection::ConnectionHandlerInEvent;
+    type InEvent = connection::ConnectionHandlerInEvent<Message>;
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
@@ -99,6 +93,18 @@ impl connection::ConnectionHandler for BinanceDepthInterceptor {
         Poll::Pending
     }
     fn inject_event(&mut self, event: Self::InEvent) {
-        
+        println!("Hello Future! InEvent: {:?}", event);
+    }
+    fn eject_event(&mut self, event: Self::OutEvent) {
+        println!("Hello Future! OutEvent: {:?}", event);
+    }
+}
+
+impl Future for BinanceDepthInterceptor {
+    type Output = &'static dyn Depth<Level>;
+
+    fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        self.inject_event(ConnectionHandlerInEvent::Connect);
+        Poll::Pending
     }
 }
