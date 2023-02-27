@@ -10,20 +10,23 @@ use super::{
         ConnectionHandler,
         ConnectionHandlerOutEvent
     },
-    middleware_specs::Interceptor
-};
-use futures_util::{
-    future::BoxFuture,
-    stream::FuturesUnordered,
-    stream::SelectAll
 };
 use std::{
     collections::HashMap,
     pin::Pin,
-    future::Future
 };
 use futures::{
-    channel::mpsc
+    channel::mpsc,
+    task::{
+        Poll,
+        Context
+    },
+    Future,
+    stream::{
+        FuturesUnordered,
+        SelectAll
+    },
+    future::BoxFuture
 };
 pub struct PoolConnection<T: ConnectionHandler> {
     conn: Pin<Box<Connection<T>>>,
@@ -60,9 +63,11 @@ pub struct Pool<T: ConnectionHandler, U> {
     counters: PoolConnectionCounters,
     pending: HashMap<ConnectionId, PendingConnection<T>>,
     established: HashMap<ConnectionId, EstablishedConnection<T>>,
-    pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = U> + Send>>>,
+    // This spawner is for connections buonded to T: Connectionhandler
+    pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
+    // These streams are for the incoming data streams of type U
     pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>,
-    executor: Option<Box<dyn Executor<U> + Send>>,
+    executor: Option<Box<dyn Executor<T> + Send>>,
     pending_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
     pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
     established_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
@@ -93,11 +98,11 @@ U: Send + 'static
             established_connection_events_rx,
         }
     }
-    pub fn with_executor(mut self, e: Box<dyn Executor<U> + Send>) -> Self {
+    pub fn with_executor(mut self, e: Box<dyn Executor<T> + Send>) -> Self {
         self.executor = Some(e);
         self
     }
-    fn spawn(&mut self, task: BoxFuture<'static, U>) {
+    fn spawn(&mut self, task: BoxFuture<'static, T>) {
         if let Some(executor) = &mut self.executor {
             // If there's an executor defined for this Pool then we use it.
             executor.exec(task);
@@ -111,7 +116,9 @@ U: Send + 'static
         self.local_streams.push(stream);
     }
 
-
+    pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
+        Poll::Pending
+    }
 }
 
 pub struct PendingConnection<T: ConnectionHandler> (PoolConnection<T>);

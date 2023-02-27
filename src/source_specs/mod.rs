@@ -30,7 +30,8 @@ impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
-        Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("Hello".to_string())))
+        // Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("Custom Event".to_string())))
+        Poll::Pending
     }
     fn inject_event(&mut self, event: Self::InEvent) {
         
@@ -67,7 +68,7 @@ pub mod helpers {
         let str_val = String::deserialize(input)?;
         str_val.parse::<f32>().map_err(de::Error::custom)
     }
-    pub fn temporal_value<'a, D, T>(input: D, source_type: T) -> Result<String, D::Error>
+    pub fn check_json<'a, D, T>(input: D, source_type: T) -> Result<String, D::Error>
     where
         D: Deserializer<'a>
     {

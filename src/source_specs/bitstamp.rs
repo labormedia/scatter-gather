@@ -82,7 +82,8 @@ impl connection::ConnectionHandler for BitstampDepthInterceptor {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent>
     {
-        Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
+        // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
+        Poll::Pending
     }
     fn inject_event(&mut self, event: Self::InEvent) {
         

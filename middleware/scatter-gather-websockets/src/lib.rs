@@ -1,8 +1,5 @@
-use futures::stream::{SplitSink, SplitStream};
 use scatter_gather_core as sgc;
-use scatter_gather_core::middleware_specs::{
-    ServerConfig
-};
+use scatter_gather_core::middleware_specs::ServerConfig;
 use sgc::connection::{
     ConnectionHandlerInEvent,
     ConnectionHandlerOutEvent, ConnectionHandler
@@ -12,14 +9,13 @@ use tokio_tungstenite::{
     connect_async, 
     tungstenite::protocol::Message,
 };
-use futures::{
-    StreamExt, SinkExt
-};
 use tokio::net::TcpStream;
-use std::{
-    task::Poll,
-    fmt
+use futures::{
+    StreamExt, SinkExt,
+    stream::{SplitSink, SplitStream},
+    task::Poll
 };
+use std::fmt;
 
 pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
     pub config: ServerConfig<TInterceptor>,
@@ -84,7 +80,10 @@ impl<TInterceptor: ConnectionHandler> sgc::connection::ConnectionHandler for Web
     fn poll(
             &mut self,
             cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Self::OutEvent> {
-        Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
+        ) -> std::task::Poll<Self::OutEvent> 
+    {
+        &self.config;
+        // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
+        Poll::Pending
     }
 }
