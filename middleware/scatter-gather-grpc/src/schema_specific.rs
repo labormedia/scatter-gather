@@ -33,7 +33,7 @@ pub struct OrderBook
 
 impl OrderBook {
     pub fn new() -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(20);
+        let (tx, rx) = mpsc::channel(20);
         Self {
             tx, 
             rx: Arc::new(Mutex::new(rx))
@@ -53,9 +53,9 @@ impl OrderbookAggregator for OrderBook {
     }
 }
 
-pub async fn server() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn server(address: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting service.");
-    let addr: _ = "[::1]:54001".parse().unwrap();
+    let addr: _ = "[::1]:54001".parse()?;
     let order_book_aggregator = OrderBook::new();
     let service = orderbook::orderbook_aggregator_server::OrderbookAggregatorServer::with_interceptor(order_book_aggregator, intercept);
     Server::builder().add_service(service).serve(addr).await?;
