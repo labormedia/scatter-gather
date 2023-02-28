@@ -16,8 +16,6 @@ use futures::{
     StreamExt, SinkExt,
     stream::{SplitSink, SplitStream},
     task::Poll,
-    Future,
-    future::poll_fn
 };
 use std::fmt;
 
@@ -35,7 +33,7 @@ impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
         let (mut write,read) = Self::spin_up(&config).await;
         if let Some(init_handle) = &config.init_handle {
             match write.send(Message::Text(init_handle.to_string())).await {
-                Ok(m) => println!("response {:?}", m),
+                Ok(m) => println!("Connection Response : {:?}", m),
                 Err(e) => println!("Initialization Error: {:?}", e)
             };
         };
@@ -50,16 +48,16 @@ impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, 
         SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
     ) {
-        let (a,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
-        a.split()
+        let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
+        ws_stream.split()
     }
 
     pub async fn send(&mut self, msg: String) {
         match self.write.send(Message::Text(msg)).await {
-            Ok(m) => println!("response {:?}", m),
+            Ok(m) => println!("Response {:?}", m),
             Err(e) => println!("Error: {:?}", e)
         };
-        println!("message sent");
+        println!("message sent.");
     }
 
     pub fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>> {
@@ -83,7 +81,7 @@ impl<TInterceptor: ConnectionHandler + Interceptor> sgc::connection::ConnectionH
     type OutEvent = ConnectionHandlerOutEvent<()>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
-        println!("Hello Future! InEvent: {:?}", event);
+        println!("Inject debug: InEvent: {:?}", event);
     }
 
     fn eject_event(&mut self, event: Self::OutEvent) {

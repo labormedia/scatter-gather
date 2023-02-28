@@ -1,9 +1,6 @@
-use futures::future::Pending;
-
 use crate::middleware_specs::*;
 use std::{
     fmt,
-    error,
     task::{
         Poll,
         Context
