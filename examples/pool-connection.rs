@@ -18,7 +18,7 @@ use scatter_gather::source_specs::{
     binance::BinanceDepthInterceptor,
     bitstamp::BitstampDepthInterceptor,
     Depth,
-    Level
+    Level, Interceptors
 };
 use futures::{StreamExt, Future};
 use tungstenite::Message;
@@ -47,8 +47,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         handler: bitstamp_interceptor
     };
 
-    let connection1 = WebSocketsMiddleware::new(config_binance);
-    let connection2 = WebSocketsMiddleware::new(config_bitstamp);
+    let connection1 = WebSocketsMiddleware::new(config_binance).await.get_stream();
+    let connection2 = WebSocketsMiddleware::new(config_bitstamp).await.get_stream();
 
     let pool_config = PoolConfig {
         task_event_buffer_size: 1
@@ -56,14 +56,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // type Message = (Option<Result<tungstenite::protocol::message::Message, tungstenite::error::Error>>, tokio_tungstenite::WebSocketStream<tokio_tungstenite::stream::MaybeTlsStream<tokio::net::TcpStream>>);
     // let mut new_pool: Pool<WebSocketsMiddleware<_> = Pool::new(0, pool_config, PoolConnectionLimits::default());
 
-    let mut new_pool: Pool<WebSocketsMiddleware<&dyn Depth<Level>>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config, PoolConnectionLimits::default());
+    let mut new_pool: Pool<WebSocketsMiddleware<BitstampDepthInterceptor>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config, PoolConnectionLimits::default());
 
-    new_pool.inject_connection(connection1);
+    // new_pool.inject_connection(connection2);
+    new_pool.collect_streams(Box::pin(connection1));
+    // new_pool.inject_connection(connection2.into());
     // new_pool.spawn(connection1);
     // new_pool.collect_streams(Box::pin(connection1.await.read));
     // new_pool.collect_streams(Box::pin(connection2.await.read));
-    while let Some(a) = new_pool.local_spawns.next().await {
-        println!("test {:?} ", type_of(a));
-    }
+    new_pool.connect().await;
     Ok(())
 }

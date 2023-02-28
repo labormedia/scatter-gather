@@ -61,6 +61,10 @@ impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
         };
         println!("message sent");
     }
+
+    pub fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>> {
+        self.read
+    }
 }
 
 #[derive(Debug)]
@@ -105,11 +109,3 @@ impl<TInterceptor: ConnectionHandler + Interceptor> sgc::connection::ConnectionH
     }
 }
 
-impl<TInterceptor: ConnectionHandler + Interceptor> Into<scatter_gather_core::connection::Connection<TInterceptor>> for WebSocketsMiddleware<TInterceptor> {
-    fn into(self) -> scatter_gather_core::connection::Connection<TInterceptor> {
-        scatter_gather_core::connection::Connection {
-            id: scatter_gather_core::connection::ConnectionId::new(0),
-            source_type: self.config
-        }
-    }
-}

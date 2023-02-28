@@ -24,7 +24,7 @@ pub trait Depth<T>: Send + Sync {
     fn get_asks(&self) -> &Vec<T>;
 }
 
-impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
+impl<T: Send + 'static> ConnectionHandler for Box<dyn Depth<T>> {
     type InEvent = ConnectionHandlerInEvent<Message>;
     type OutEvent = ConnectionHandlerOutEvent<Message>;
 
@@ -44,7 +44,7 @@ impl<T: Send + 'static> ConnectionHandler for &'static dyn Depth<T> {
     }
 }
 
-impl<T: Send + 'static + Default> Interceptor for &'static dyn Depth<T> {
+impl<T: Send + 'static + Default> Interceptor for Box<dyn Depth<T>> {
         type Input = String;
         type Output = T;
 
@@ -53,7 +53,7 @@ impl<T: Send + 'static + Default> Interceptor for &'static dyn Depth<T> {
         }
 }
 
-impl<T: Send + 'static + Default> Debug for dyn Depth<T> {
+impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Depth: {:?}", self)
     }
@@ -102,4 +102,9 @@ pub mod helpers {
             }
         };
     }
+}
+
+pub enum Interceptors {
+    Binance(binance::BinanceDepthInterceptor),
+    Bitstamp(bitstamp::BitstampDepthInterceptor)
 }

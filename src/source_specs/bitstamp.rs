@@ -3,12 +3,13 @@ use super::{
     Interceptor,
     Level
 };
-use scatter_gather_core::connection::{ConnectionHandler, self, ConnectionHandlerOutEvent};
+use scatter_gather_core::connection::{ConnectionHandler, self, ConnectionHandlerOutEvent, ConnectionHandlerInEvent};
 use serde_json;
 use serde::{
     Serialize,
     Deserialize,
 };
+use futures::Future;
 use tungstenite::Message;
 use std::task::Poll;
 
@@ -89,5 +90,14 @@ impl connection::ConnectionHandler for BitstampDepthInterceptor {
     }
     fn eject_event(&mut self, event: Self::OutEvent) {
         
+    }
+}
+
+impl Future for BitstampDepthInterceptor {
+    type Output = &'static dyn Depth<Level>;
+
+    fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        self.inject_event(ConnectionHandlerInEvent::Connect);
+        Poll::Pending
     }
 }

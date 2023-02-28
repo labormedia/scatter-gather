@@ -76,7 +76,7 @@ impl Interceptor for BinanceDepthInterceptor {
     type Output = BinanceDepthInterceptor;
 
     fn intercept(&mut self, input: Self::Input) -> BinanceDepthInterceptor {
-        Self::helper(&self, input)
+        BinanceDepthInterceptor::helper(&self, input)
     }
 }
 
