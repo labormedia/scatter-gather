@@ -29,7 +29,7 @@ use futures::{
     Future,
     stream::{
         FuturesUnordered,
-        SelectAll
+        SelectAll, Next
     },
     future::BoxFuture
 };
@@ -83,7 +83,7 @@ pub struct Pool<T: ConnectionHandler + Debug, U> {
 impl<T, U> Pool<T, U> 
 where
 T: ConnectionHandler + Debug + Sync,
-U: Send + 'static
+U: Send + 'static + std::fmt::Debug
 {
     pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, U> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
@@ -128,10 +128,30 @@ U: Send + 'static
     pub async fn connect(&mut self) {
         loop {
             match self.local_spawns.next().await {
-                Some(a) => println!("test {:?} ", a),
+                Some(a) => {
+                    println!("Connecting {:?} ", a);
+                    // self.collect_streams(Box::pin(a.read));
+                },
                 _ => return ()
             }
         }
+    }
+
+    pub async fn intercept_stream(&mut self) {
+        loop {
+            match self.local_streams.next().await {
+                Some(a) => {
+                    println!("Received: {:?}", a);
+                },
+                _ => {}
+
+            }
+        }
+           
+    }
+
+    pub fn next(&mut self) -> Next<SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>> {
+        self.local_streams.next()
     }
 
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
