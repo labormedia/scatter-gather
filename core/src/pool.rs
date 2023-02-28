@@ -82,7 +82,7 @@ pub struct Pool<T: ConnectionHandler + Debug, U> {
 
 impl<T, U> Pool<T, U> 
 where
-T: ConnectionHandler + Debug,
+T: ConnectionHandler + Debug + Sync,
 U: Send + 'static
 {
     pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, U> {
@@ -108,8 +108,8 @@ U: Send + 'static
         self.executor = Some(e);
         self
     }
-    pub fn spawn(&mut self, task: BoxFuture<'static, T>) {
-        if let Some(executor) = &mut self.executor {
+    pub fn spawn(&mut self, task: Pin<Box<dyn Future<Output = T> + Send>>) {
+        if let Some(executor) = &self.executor {
             // If there's an executor defined for this Pool then we use it.
             executor.exec(task);
         } else {
@@ -117,12 +117,21 @@ U: Send + 'static
             self.local_spawns.push(task);
         }
     }
-    pub fn inject_connection(&self, conn: impl Future<Output = T>) {
-        ()
+    pub fn inject_connection(&self, conn: impl Future<Output = T> + Send + 'static) {
+        self.local_spawns.push(Box::pin(conn));
     }
 
     pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
         self.local_streams.push(stream);
+    }
+
+    pub async fn connect(&mut self) {
+        loop {
+            match self.local_spawns.next().await {
+                Some(a) => println!("test {:?} ", a),
+                _ => return ()
+            }
+        }
     }
 
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {

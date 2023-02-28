@@ -7,11 +7,11 @@ pub mod middleware_specs;
 pub mod connection;
 pub mod pool;
 
-pub trait Executor<T: Send> {
+pub trait Executor<T: Send + Sync> {
     fn exec(&self, future: Pin<Box<dyn Future<Output = T> + Send>>);
 }
 
-impl<T, F: Fn(Pin<Box<dyn Future<Output = T> + Send>>)> Executor<T> for F 
+impl<T: Sync, F: Fn(Pin<Box<dyn Future<Output = T> + Send>>)> Executor<T> for F 
 where
 T: Send
 {

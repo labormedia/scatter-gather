@@ -1,3 +1,5 @@
+use futures::future::Pending;
+
 use crate::middleware_specs::*;
 use std::{
     fmt,
@@ -8,6 +10,7 @@ use std::{
     },
 };
 
+#[derive(Debug)]
 pub struct Connection<THandler: ConnectionHandler> {
     pub id: ConnectionId,
     pub source_type: ServerConfig<THandler>,
@@ -51,4 +54,24 @@ pub trait ConnectionHandler: Send + 'static {
 
     fn inject_event(&mut self, event: Self::InEvent);
     fn eject_event(&mut self, event: Self::OutEvent);
+}
+
+impl<THandler: fmt::Debug + Send + ConnectionHandler> ConnectionHandler for Connection<THandler> {
+    type InEvent = ConnectionHandlerInEvent<THandler>;
+    type OutEvent = ConnectionHandlerOutEvent<THandler>;
+
+    fn poll(
+            &mut self,
+            cx: &mut Context<'_>,
+        ) -> Poll<Self::OutEvent> {
+        Poll::Pending
+    }
+
+    fn inject_event(&mut self, event: Self::InEvent) {
+        
+    }
+
+    fn eject_event(&mut self, event: Self::OutEvent) {
+        
+    }
 }
