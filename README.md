@@ -6,6 +6,16 @@ A scatter-gather implementation for financial data acquisition and algorithmic t
 cargo build --examples
 ```
 
+# List of examples to run
+```
+cargo run --example
+cargo run --example pool-to-grpc
+```
+# Run project
+```
+cargo run
+```
+
 # Project Structure
 .\
 ├── CHANGELOG.md    : List of changes throughout versions\
