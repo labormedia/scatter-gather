@@ -15,15 +15,29 @@ use tonic::{
     Status,
     codegen::Arc
 };
-use tokio_stream::wrappers::ReceiverStream;
+// use tokio_stream::wrappers::ReceiverStream;
 use tokio::sync::{
     Mutex,
     mpsc::{
         self, 
-        Sender,
-        Receiver
-    }
+        // Sender,
+        // Receiver
+    },
+    broadcast::{
+        self,
+        channel,
+        Receiver,Sender,
+    },
 };
+use tokio_stream::{
+    wrappers::{
+        BroadcastStream,
+        ReceiverStream
+    },
+    StreamExt,
+    Stream
+};
+use tonic::codegen::Pin;
 
 pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
@@ -34,7 +48,7 @@ pub struct GrpcMiddleware<TInterceptor: ConnectionHandler> {
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: Sender<Option<Summary>>,
-    pub read: Receiver<Option<Summary>>
+    pub read: Arc<Mutex<Receiver<Option<Summary>>>> 
 }
 
 
@@ -54,7 +68,7 @@ impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
         Self {
             config,
             write,
-            read
+            read: Arc::new(Mutex::new(read))
         }
     }
     async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
@@ -63,10 +77,7 @@ impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
     ) {
         let mut channel = orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await.expect("Unable to build service.");
-        mpsc::channel(1)
+        broadcast::channel(10)
     }
 
-    async fn echo(self) {
-        
-    }
 }
