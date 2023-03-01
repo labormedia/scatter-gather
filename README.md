@@ -3,7 +3,7 @@ A scatter-gather implementation for financial data acquisition and algorithmic t
 
 # Build
 ```
-cargo build --examples
+cargo build --all --examples
 ```
 
 # List of examples to run
