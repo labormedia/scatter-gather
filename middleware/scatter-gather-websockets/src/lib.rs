@@ -19,6 +19,8 @@ use futures::{
 };
 use std::fmt;
 
+
+// Declares the middleware Factory with an associated generic type. 
 #[derive(Debug)]
 pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
     pub config: ServerConfig<TInterceptor>,
@@ -28,6 +30,7 @@ pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
     pub read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
 }
 
+// Implement custom fucntionality for the middleware.
 impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
     pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
         let (mut write,read) = Self::spin_up(&config).await;
@@ -65,17 +68,21 @@ impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
     }
 }
 
+// Define possible errors.
 #[derive(Debug)]
 pub enum ConnectionHandlerError {
     Custom
 }
 
+// Define a way to debug the errors.
 impl fmt::Display for ConnectionHandlerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Custom error")
     }
 }
 
+// implement ConnectionHandler for the middleware
+// This will facilitate the integration with the other elements of the suite.
 impl<TInterceptor: ConnectionHandler + Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
     type InEvent = ConnectionHandlerInEvent<Message>;
     type OutEvent = ConnectionHandlerOutEvent<()>;

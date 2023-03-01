@@ -1,7 +1,18 @@
 
 use scatter_gather_core::{
-    connection::ConnectionHandler,
-    middleware_specs::ServerConfig
+    connection::{
+        ConnectionHandler,
+        ConnectionHandlerInEvent,
+        ConnectionHandlerOutEvent
+    },
+    middleware_specs::{
+        ServerConfig,
+        Interceptor
+    },
+};
+use std::{
+    task::Poll,
+    fmt
 };
 use futures::{stream::{
     SplitSink, 
@@ -77,7 +88,40 @@ impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
     ) {
         let mut channel = orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await.expect("Unable to build service.");
+
+        // generic blocking channel
         broadcast::channel(10)
     }
 
+}
+
+// Define possible errors.
+#[derive(Debug)]
+pub enum ConnectionHandlerError {
+    Custom
+}
+
+// Define a way to debug the errors.
+impl fmt::Display for ConnectionHandlerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Custom error")
+    }
+}
+
+// Implement ConnectionHandler for the middleware.
+
+impl<T: ConnectionHandler + Interceptor> ConnectionHandler for GrpcMiddleware<T> {
+    type InEvent = ConnectionHandlerInEvent<()>;
+    type OutEvent = ConnectionHandlerOutEvent<()>;
+
+    fn inject_event(&mut self, event: Self::InEvent) {}
+    fn eject_event(&mut self, event: Self::OutEvent) {}
+
+    fn poll(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::OutEvent> 
+    {
+        Poll::Pending
+    }
 }
