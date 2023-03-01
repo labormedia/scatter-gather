@@ -72,13 +72,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             _ => {}
         }
     };
-    // while let Some(Ok(Message::Text(a))) = bitstamp_pool.next().await {
-    //     // let b = ;
-    //     println!("accesing: {:?}", a)
-    // }
-    // new_pool.inject_connection(connection2.into());
-    // new_pool.spawn(connection1);
-    // new_pool.collect_streams(Box::pin(connection1.await.read));
-    // new_pool.collect_streams(Box::pin(connection2.await.read));
     Ok(())
 }
