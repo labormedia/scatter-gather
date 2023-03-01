@@ -1,51 +1,35 @@
 use scatter_gather_core::{
     middleware_specs::{
-        ServerConfig,
-        Interceptor
-    }
+        ServerConfig, 
+        Interceptor,
+    },
+    connection::ConnectionHandler
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
-use scatter_gather::source_specs::binance::BinanceDepth;
+use scatter_gather::source_specs::{
+    Depth,
+    bitstamp::BitstampDepthInterceptor as interceptor
+};
 use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    struct BinanceInterceptor {}
 
-    #[derive(Debug)]
-    enum CustomBinanceInEvent {
-        Message(String),
-        Error(Box<dyn std::error::Error + Send>)
-    }
+    let mut binance_interceptor = interceptor::new();
 
-    impl BinanceInterceptor {
-        fn new() -> Self {
-            Self {}
-        }
-    }
-
-    impl Interceptor for BinanceInterceptor {
-        type Input = BinanceDepth;
-
-        type InterceptorError = ();
-        type InterceptorInEvent = CustomBinanceInEvent;
-        type InterceptorOutEvent = ();
-
-        fn inject_event(&mut self, event: Self::InterceptorInEvent) {
-            ()
-        }
-    }
-
-    let binance_interceptor = BinanceInterceptor::new();
-
-    let config: ServerConfig<BinanceInterceptor> = ServerConfig {
-        url : String::from("wss://stream.binance.com:9443/ws/bnbbtc@depth@100ms"),
+    let config: ServerConfig<interceptor> = ServerConfig {
+        url : String::from("wss://ws.bitstamp.net"),
         prefix: String::from(""),
-        interceptor: binance_interceptor
+        init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
+        handler: binance_interceptor
     };
     let mut connection = WebSocketsMiddleware::new(config).await;
+    connection.send(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()).await;
     while let Some(a) = connection.read.next().await {
-        println!("test {:?}", a);
+        let data: interceptor = connection.config.handler.intercept(a?.into_text()?);
+        println!("Parsed: {:?}", data);
+        println!("Bids: {:?}", data.get_bids());
+        println!("Asks: {:?}", data.get_asks());
     }
     Ok(())
 }

@@ -1,23 +1,28 @@
-use futures::stream::{SplitSink, SplitStream};
 use scatter_gather_core as sgc;
-use scatter_gather_core::middleware_specs::{
-    ServerConfig,
-    Interceptor
+use scatter_gather_core::middleware_specs::ServerConfig;
+use sgc::connection::{
+    ConnectionHandlerInEvent,
+    ConnectionHandlerOutEvent, 
+    ConnectionHandler
 };
+use sgc::middleware_specs::Interceptor;
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use url::Url;
-use futures::{
-    Future, StreamExt, SinkExt
+use tokio_tungstenite::{
+    connect_async, 
+    tungstenite::protocol::Message,
 };
 use tokio::net::TcpStream;
-use std::{
+use futures::{
+    StreamExt, SinkExt,
+    stream::{SplitSink, SplitStream},
     task::Poll,
-    fmt,
-    error::Error
 };
+use std::fmt;
 
-pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
+
+// Declares the middleware Factory with an associated generic type. 
+#[derive(Debug)]
+pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
     pub config: ServerConfig<TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
@@ -25,62 +30,87 @@ pub struct WebSocketsMiddleware<TInterceptor: Interceptor> {
     pub read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
 }
 
-impl<TInterceptor: Interceptor> WebSocketsMiddleware<TInterceptor> {
+// Implement custom fucntionality for the middleware.
+impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
     pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
-        let (a,b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
-        let (c,d) = a.split();
+        let (mut write,read) = Self::spin_up(&config).await;
+        if let Some(init_handle) = &config.init_handle {
+            match write.send(Message::Text(init_handle.to_string())).await {
+                Ok(m) => println!("Connection Response : {:?}", m),
+                Err(e) => println!("Initialization Error: {:?}", e)
+            };
+        };
         Self {
-            config: config,
-            // ws_stream: a,
-            write: c,
-            read: d,
+            config,
+            write,
+            read
         }
     }
-    pub async fn connect(&self) -> WebSocketStream<MaybeTlsStream<TcpStream>> {
-        let url = url::Url::parse(&self.config.url).expect("Expected Websocket Url");
-        let (a,_b) = connect_async(url).await.expect("Connection to Websocket server failed");
-        a
+    
+    async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
+        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, 
+        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
+    ) {
+        let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
+        ws_stream.split()
     }
 
     pub async fn send(&mut self, msg: String) {
         match self.write.send(Message::Text(msg)).await {
-            Ok(m) => println!("response {:?}", m),
+            Ok(m) => println!("Response {:?}", m),
             Err(e) => println!("Error: {:?}", e)
         };
-        println!("message sent");
+        println!("message sent.");
+    }
+
+    pub fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>> {
+        self.read
     }
 }
 
+// Define possible errors.
 #[derive(Debug)]
 pub enum ConnectionHandlerError {
     Custom
 }
 
+// Define a way to debug the errors.
 impl fmt::Display for ConnectionHandlerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Custom error")
     }
 }
-impl Error for ConnectionHandlerError {}
 
-impl<TInterceptor: Interceptor> sgc::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
-    type InEvent = ();
-    type OutEvent = ();
-    type Error = ConnectionHandlerError;
+// implement ConnectionHandler for the middleware
+// This will facilitate the integration with the other elements of the suite.
+impl<TInterceptor: ConnectionHandler + Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
+    type InEvent = ConnectionHandlerInEvent<Message>;
+    type OutEvent = ConnectionHandlerOutEvent<()>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
+        println!("Inject debug: InEvent: {:?}", event);
+    }
+
+    fn eject_event(&mut self, event: Self::OutEvent) {
         
     }
 
     fn poll(
             &mut self,
             cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<
-            sgc::ConnectionHandlerEvent<Self::OutEvent, Self::Error>
-        > {
-        Poll::Ready(sgc::ConnectionHandlerEvent::Close(ConnectionHandlerError::Custom))
+        ) -> std::task::Poll<Self::OutEvent> 
+    {
+        loop {
+            match &self.read.poll_next_unpin(cx) {
+                Poll::Ready(None) => {},
+                Poll::Ready(a) => {
+                    println!("Read message: {:?}", a);
+                },
+                Poll::Pending => {}
+            }
+            return Poll::Pending
+        } 
+
     }
 }
 
-// let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-// println!("WebSocket handshake has been successfully completed");
