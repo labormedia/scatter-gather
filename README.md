@@ -7,7 +7,7 @@ cargo build --examples
 ```
 
 # Project Structure
-.
+.\
 ├── CHANGELOG.md    : List of changes throughout versions\
 ├── LICENSE.md      : License\
 ├── README.md       : This file\
