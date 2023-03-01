@@ -58,8 +58,9 @@ pub struct GrpcMiddleware<TInterceptor: ConnectionHandler> {
     pub config: ServerConfig<TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
+    // Will the channel need additional smart pointers ? we'll figure it out.
     pub write: Sender<Result<Summary,Status>>,
-    pub read: Arc<Mutex<Receiver<Result<Summary, Status>>>> 
+    pub read: Receiver<Result<Summary, Status>> //Arc<Mutex<Receiver<Result<Summary, Status>>>> 
 }
 
 
@@ -79,7 +80,7 @@ impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
         Self {
             config,
             write,
-            read: Arc::new(Mutex::new(read))
+            read: read // Arc::new(Mutex::new(read))
         }
     }
     async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
