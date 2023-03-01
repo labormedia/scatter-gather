@@ -63,10 +63,10 @@ impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
     ) {
         let mut channel = orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await.expect("Unable to build service.");
-        mpsc::channel(20)
+        mpsc::channel(1)
     }
 
-    async fn connect(address: &str) {
-
+    async fn echo(self) {
+        
     }
 }
