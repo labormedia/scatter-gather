@@ -32,7 +32,7 @@ impl OrderbookAggregator for OrderBook {
         let (tx, rx) = mpsc::channel(20);
 
         tokio::spawn(async move {
-            // tx.send(42);
+            tx.send(Ok(Summary::default())).await;
         });
 
         let response = Response::new(ReceiverStream::new(rx)) ;
