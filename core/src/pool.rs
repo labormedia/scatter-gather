@@ -31,7 +31,7 @@ use futures::{
         FuturesUnordered,
         SelectAll, Next
     },
-    future::BoxFuture
+    future::BoxFuture, FutureExt
 };
 
 #[derive(Debug)]
@@ -162,10 +162,16 @@ U: Send + 'static + std::fmt::Debug
     }
 
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
-        match self.established_connection_events_rx.poll_next_unpin(cx) {
+        match self.local_spawns.poll_next_unpin(cx) {
             Poll::Pending => {},
-            Poll::Ready(None) => println!("Pool is None"),
-            Poll::Ready(Some(a)) => { println!("Received from connection handler: {:?}", a); }
+            Poll::Ready(None) => unreachable!("unreachable."),
+            Poll::Ready(Some(mut value_I)) => { 
+                match value_I
+                    .poll(cx) {
+                        value_II => { println!("As Connection handler {:?}", value_II); }
+                        _ => {}
+                    }
+            }
         };
         Poll::Pending
     }

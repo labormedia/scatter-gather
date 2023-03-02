@@ -34,13 +34,11 @@ fn main() {
         task_event_buffer_size: 1
     };
 
-    let channels = GrpcMiddleware::new(grpc_config);
     let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
-
+    let channels = GrpcMiddleware::new(grpc_config);
     grpc_pool.inject_connection(channels);
     match grpc_pool.poll(&mut Context::from_waker(futures::task::noop_waker_ref())) {
         Poll::Ready(value) => { println!("{value:?}"); }
         Poll::Pending => { println!("Poll pending."); }
     };
-    // let a = grpc_pool.next();
 }
