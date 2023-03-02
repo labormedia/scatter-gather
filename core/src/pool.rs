@@ -136,6 +136,7 @@ U: Send + 'static + std::fmt::Debug
         loop {
             match self.local_spawns.next().await {
                 Some(a) => {
+                    #[cfg(debug_assertions)]
                     println!("Connecting {:?} ", a);
                     // self.collect_streams(Box::pin(a.read));
                 },
@@ -148,6 +149,7 @@ U: Send + 'static + std::fmt::Debug
         loop {
             match self.local_streams.next().await {
                 Some(a) => {
+                    #[cfg(debug_assertions)]
                     println!("Received: {:?}", a);
                 },
                 _ => {}
@@ -164,11 +166,17 @@ U: Send + 'static + std::fmt::Debug
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
         match self.local_spawns.poll_next_unpin(cx) {
             Poll::Pending => {},
-            Poll::Ready(None) => unreachable!("unreachable."),
+            Poll::Ready(None) => {
+                #[cfg(debug_assertions)]
+                unreachable!("unreachable.")
+            },
             Poll::Ready(Some(mut value_I)) => { 
                 match value_I
                     .poll(cx) {
-                        value_II => { println!("As Connection handler {:?}", value_II); }
+                        value_II => {
+                            #[cfg(debug_assertions)]
+                            println!("As Connection handler {:?}", value_II); 
+                        }
                         _ => {}
                     }
             }
