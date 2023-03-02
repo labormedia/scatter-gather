@@ -33,6 +33,8 @@ use futures::{
     },
     future::BoxFuture
 };
+
+#[derive(Debug)]
 pub struct PoolConnection<T: ConnectionHandler> {
     conn: Pin<Box<Connection<T>>>,
     handler: T,
@@ -45,6 +47,11 @@ pub enum PoolEvent<T: ConnectionHandler> {
     ConnectionEvent(PoolConnection<T>),
 }
 
+impl<T: ConnectionHandler> Debug for PoolEvent<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Default")
+    }
+}
 
 impl<T: ConnectionHandler> PoolEvent<T> {
     fn notify_event<'a>(

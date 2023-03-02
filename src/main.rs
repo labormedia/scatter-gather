@@ -1,3 +1,7 @@
+use std::task::{
+    Poll,
+    Context
+};
 use scatter_gather::source_specs::binance::BinanceDepthInterceptor;
 use scatter_gather_core::{
     middleware_specs::{
@@ -6,7 +10,8 @@ use scatter_gather_core::{
     pool::{
         PoolConfig,
         Pool,
-        PoolConnectionLimits
+        PoolConnectionLimits,
+        PoolEvent
     }
 };
 use scatter_gather_grpc::GrpcMiddleware;
@@ -29,8 +34,13 @@ fn main() {
         task_event_buffer_size: 1
     };
 
-    let channels = Box::pin(GrpcMiddleware::new(grpc_config));
+    let channels = GrpcMiddleware::new(grpc_config);
     let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
 
-    grpc_pool.spawn(channels);
+    grpc_pool.inject_connection(channels);
+    match grpc_pool.poll(&mut Context::from_waker(futures::task::noop_waker_ref())) {
+        Poll::Ready(value) => { println!("{value:?}"); }
+        Poll::Pending => { println!("Poll pending."); }
+    };
+    // let a = grpc_pool.next();
 }
