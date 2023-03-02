@@ -16,7 +16,7 @@ pub mod orderbook {
 }
 
 fn main() {
-    let binance_interceptor = source_specs::binance::BinanceDepthInterceptor::new();
+    let binance_interceptor = scatter_gather::source_specs::binance::BinanceDepthInterceptor::new();
 
     let grpc_config = ServerConfig {
         url: String::from(""),
@@ -29,7 +29,8 @@ fn main() {
         task_event_buffer_size: 1
     };
 
-    GrpcMiddleware::new(grpc_config);
-    let grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
+    let channels = Box::pin(GrpcMiddleware::new(grpc_config));
+    let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
 
+    grpc_pool.spawn(channels);
 }

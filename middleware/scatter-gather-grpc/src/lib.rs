@@ -14,10 +14,14 @@ use std::{
     task::Poll,
     fmt
 };
-use futures::{stream::{
-    SplitSink, 
-    SplitStream
-}, io::Empty};
+use futures::{
+    Future,
+    stream::{
+        SplitSink, 
+        SplitStream
+    }, 
+    io::Empty
+};
 use schema_specific::orderbook::{Summary, self};
 use tonic::{
     transport::Server, 
@@ -27,18 +31,21 @@ use tonic::{
     codegen::Arc
 };
 // use tokio_stream::wrappers::ReceiverStream;
-use tokio::sync::{
-    Mutex,
-    mpsc::{
-        self, 
-        // Sender,
-        // Receiver
-    },
-    broadcast::{
-        self,
-        channel,
-        Receiver,Sender,
-    },
+use tokio::
+    {
+        sync::{
+        Mutex,
+        mpsc::{
+            self, 
+            // Sender,
+            // Receiver
+        },
+        broadcast::{
+            self,
+            channel,
+            Receiver,Sender,
+        },
+    }
 };
 use tokio_stream::{
     wrappers::{
@@ -59,40 +66,37 @@ pub struct GrpcMiddleware<TInterceptor: ConnectionHandler> {
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     // Will the channel need additional smart pointers ? we'll figure it out.
-    pub write: Sender<Result<Summary,Status>>,
-    pub read: Receiver<Result<Summary, Status>> //Arc<Mutex<Receiver<Result<Summary, Status>>>> 
+    pub write: mpsc::Sender<Result<Summary,Status>>,
+    pub read: broadcast::Sender<Result<Summary, Status>> //Arc<Mutex<Receiver<Result<Summary, Status>>>> 
 }
 
 
 impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
 
     pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
-        let (mut write,read) = Self::spin_up(&config).await;
+        let (in_channel, out_channel): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = tokio::sync::mpsc::channel(32);
+        let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
+        let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
+        let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
+        let channels = schema_specific::OrderBook::new(in_channel, in_broadcast);
 
-        // There's no init handle in this case (Empty).
-
-        // if let Some(init_handle) = &config.init_handle {
-        //     match write.send(Some(orderbook::Empty {})).await {
-        //         Ok(m) => println!("Connection Response : {:?}", m),
-        //         Err(e) => println!("Initialization Error: {:?}", e)
-        //     };
-        // };
         Self {
             config,
-            write,
-            read: read // Arc::new(Mutex::new(read))
+            write: channels.tx,
+            read: channels.rx // Arc::new(Mutex::new(read))
         }
-    }
-    async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
-        Sender<Result<Summary,Status>>, 
-        Receiver<Result<Summary, Status>>
-    ) {
-        let mut channel = orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
-        .await.expect("Unable to build service.");
 
-        // generic blocking channel
-        broadcast::channel(10)
     }
+
+    // async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
+    //     mpsc::Sender<Result<Summary,Status>>, 
+    //     broadcast::Sender<Result<Summary, Status>>
+    // ) {
+
+
+    //     // generic blocking channel
+    //     (in_channel, in_broadcast_clone)
+    // }
 
 }
 
