@@ -37,12 +37,12 @@ fn main() {
     let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
     let channels = GrpcMiddleware::new(grpc_config);
     grpc_pool.inject_connection(channels);
-    loop {
+    let _ = loop {
         match grpc_pool.poll(&mut Context::from_waker(futures::task::noop_waker_ref())) {
             Poll::Ready(value) => { 
                 #[cfg(debug_assertions)]
                 println!("Poll Ready : {value:?}"); 
-                return value;
+                // return value;
             }
             Poll::Pending => { 
                 #[cfg(debug_assertions)]
@@ -50,9 +50,9 @@ fn main() {
             },
             _ => {
                 #[cfg(debug_assertions)]
-                println!("Poll event unexpected.")
+                println!("Poll event unexpected.");
             }
         };
-    }
+    };
 
 }
