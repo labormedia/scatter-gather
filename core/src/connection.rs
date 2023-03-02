@@ -8,9 +8,9 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Connection<THandler: ConnectionHandler> {
+pub struct Connection<'a, THandler: ConnectionHandler> {
     pub id: ConnectionId,
-    pub source_type: ServerConfig<THandler>,
+    pub source_type: ServerConfig<'a, THandler>,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -38,7 +38,7 @@ pub enum ConnectionHandlerOutEvent<TCustom> {
     // ConnectionError(TError)
 }
 
-pub trait ConnectionHandler: Send + 'static {
+pub trait ConnectionHandler: 'static + Send {
 
     type InEvent: fmt::Debug + Send + 'static;
     type OutEvent: fmt::Debug + Send + 'static;
@@ -53,14 +53,17 @@ pub trait ConnectionHandler: Send + 'static {
     fn eject_event(&mut self, event: Self::OutEvent);
 }
 
-impl<THandler: fmt::Debug + Send + ConnectionHandler> ConnectionHandler for Connection<THandler> {
+impl<THandler: fmt::Debug + Send + ConnectionHandler + Sync> ConnectionHandler for Connection<'static, THandler> {
     type InEvent = ConnectionHandlerInEvent<THandler>;
     type OutEvent = ConnectionHandlerOutEvent<THandler>;
 
     fn poll(
             &mut self,
             cx: &mut Context<'_>,
-        ) -> Poll<Self::OutEvent> {
+        ) -> Poll<Self::OutEvent> 
+    {
+        #[cfg(debug_assertions)]
+        println!("self {:?}", self);
         Poll::Pending
     }
 

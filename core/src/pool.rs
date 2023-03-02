@@ -1,4 +1,4 @@
-use crate::middleware_specs;
+use crate::middleware_specs::{self, ServerConfig};
 
 /// Pool Connection is initialized with the handler defined 
 /// for the specific Connection::source_type::handler.
@@ -17,7 +17,7 @@ use super::{
 use std::{
     collections::HashMap,
     pin::Pin, 
-    fmt::Debug,
+    fmt::Debug, marker::PhantomData,
 };
 use futures::{
     channel::mpsc,
@@ -35,25 +35,26 @@ use futures::{
 };
 
 #[derive(Debug)]
-pub struct PoolConnection<T: ConnectionHandler> {
-    conn: Pin<Box<Connection<T>>>,
+pub struct PoolConnection<'a, T: ConnectionHandler> {
+    conn: Pin<Box<Connection<'a, T>>>,
     handler: T,
-    event: mpsc::Sender<ConnectionHandlerInEvent<T>>
+    event: ConnectionHandlerInEvent<T>//mpsc::Sender<ConnectionHandlerOutEvent<T>>
 }
 
-pub enum PoolEvent<T: ConnectionHandler> {
-    ConnectionEstablished(PoolConnection<T>),
-    ConnectionClosed(PoolConnection<T>),
-    ConnectionEvent(PoolConnection<T>),
+pub enum PoolEvent<'a, T: ConnectionHandler> {
+    ConnectionEstablished(PoolConnection<'a, T>),
+    ConnectionClosed(PoolConnection<'a, T>),
+    ConnectionEvent(PoolConnection<'a, T>),
+    Custom
 }
 
-impl<T: ConnectionHandler> Debug for PoolEvent<T> {
+impl<T: ConnectionHandler> Debug for PoolEvent<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Default")
     }
 }
 
-impl<T: ConnectionHandler> PoolEvent<T> {
+impl<T: ConnectionHandler> PoolEvent<'_, T> {
     fn notify_event<'a>(
         &'a self, 
         mut events: mpsc::Sender<&'a Self>
@@ -62,7 +63,12 @@ impl<T: ConnectionHandler> PoolEvent<T> {
         match self {
             PoolEvent::ConnectionEstablished(conn) => events.try_send(self),
             PoolEvent::ConnectionClosed(conn) => events.try_send(self),
-            PoolEvent::ConnectionEvent(conn) => events.try_send(self)
+            PoolEvent::ConnectionEvent(conn) => events.try_send(self),
+            PoolEvent::Custom => {
+                #[cfg(debug_assertions)]
+                println!("Custom assertion for PoolEvent : {:?}", self);
+                events.try_send(&PoolEvent::Custom)
+            }
         }
     }
 }
@@ -71,11 +77,11 @@ pub struct PoolConfig {
     pub task_event_buffer_size: usize
 }
 
-pub struct Pool<T: ConnectionHandler + Debug, U> {
+pub struct Pool<'a, T: ConnectionHandler + Debug, U> {
     pool_id: usize,
     counters: PoolConnectionCounters,
-    pending: HashMap<ConnectionId, PendingConnection<T>>,
-    established: HashMap<ConnectionId, EstablishedConnection<T>>,
+    pending: HashMap<ConnectionId, PendingConnection<'a, T>>,
+    established: HashMap<ConnectionId, EstablishedConnection<'a, T>>,
     // This spawner is for connections buonded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type U
@@ -87,12 +93,12 @@ pub struct Pool<T: ConnectionHandler + Debug, U> {
     established_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
 }
 
-impl<T, U> Pool<T, U> 
+impl<'a, T, U> Pool<'a, T, U> 
 where
 T: ConnectionHandler + Debug + Sync,
 U: Send + 'static + std::fmt::Debug
 {
-    pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, U> {
+    pub fn new(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<'a, T, U> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         let (established_connection_events_tx, established_connection_events_rx) =
@@ -164,30 +170,59 @@ U: Send + 'static + std::fmt::Debug
     }
 
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
-        match self.local_spawns.poll_next_unpin(cx) {
-            Poll::Pending => {},
-            Poll::Ready(None) => {
-                #[cfg(debug_assertions)]
-                unreachable!("unreachable.")
-            },
-            Poll::Ready(Some(mut value_I)) => { 
-                match value_I
-                    .poll(cx) {
-                        value_II => {
+        loop {
+            match self.local_spawns.poll_next_unpin(cx) {
+                Poll::Pending => {
+                    #[cfg(debug_assertions)]
+                    println!("Poll Pending.");
+                    // return Poll::Pending;
+                    // decide to block or not.
+                    continue
+                },
+                Poll::Ready(None) => {
+                    #[cfg(debug_assertions)]
+                    unreachable!("unreachable.")
+                },
+                Poll::Ready(Some(mut value_I)) => { 
+                    #[cfg(debug_assertions)]
+                    println!("Ready I : {:?}", value_I);
+                    match value_I.poll(cx) {
+                        Poll::Ready(event) => {
                             #[cfg(debug_assertions)]
-                            println!("As Connection handler {:?}", value_II); 
+                            println!("Ready II : {:?}", event);
+                            return Poll::Ready(
+                                PoolEvent::ConnectionEvent(
+                                    PoolConnection { 
+                                        conn: Box::pin(Connection {
+                                            id : ConnectionId::new(0),
+                                            source_type: ServerConfig {
+                                                url: String::from(""),
+                                                prefix: String::from(""),
+                                                init_handle: None,
+                                                handler: PhantomData
+                                            }
+                                        }), 
+                                        handler: value_I, 
+                                        event: ConnectionHandlerInEvent::Connect
+                                    }
+                                ));
+                        },
+                        Poll::Pending => {
+                            #[cfg(debug_assertions)]
+                            println!("Pending I : {:?}", value_I);
                         }
-                        _ => {}
-                    }
-            }
-        };
-        Poll::Pending
+                    };
+
+                }
+            };
+            return Poll::Pending
+        }
     }
 }
 
-pub struct PendingConnection<T: ConnectionHandler> (PoolConnection<T>);
+pub struct PendingConnection<'a, T: ConnectionHandler> (PoolConnection<'a, T>);
 
-pub struct EstablishedConnection<T: ConnectionHandler> (PoolConnection<T>);
+pub struct EstablishedConnection<'a, T: ConnectionHandler> (PoolConnection<'a, T>);
 
 #[derive(Debug, Clone)]
 pub struct PoolConnectionCounters {

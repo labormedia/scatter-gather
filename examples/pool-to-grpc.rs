@@ -14,7 +14,7 @@ use scatter_gather::source_specs::{
     bitstamp::BitstampDepthInterceptor,
 };
 use tungstenite::Message;
-use std::any::type_name;
+use std::{any::type_name, marker::PhantomData};
 
 fn type_of<T>(_: T) -> &'static str {
     type_name::<T>()
@@ -30,13 +30,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         init_handle: None,
-        handler: binance_interceptor
+        handler: PhantomData
     };
     let config_bitstamp: ServerConfig<BitstampDepthInterceptor> = ServerConfig { 
         url: String::from("wss://ws.bitstamp.net"), 
         prefix: String::from("wss://"), 
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        handler: bitstamp_interceptor
+        handler: PhantomData
     };
 
     let mut connection1 = WebSocketsMiddleware::new(config_binance);

@@ -22,8 +22,8 @@ use std::fmt;
 
 // Declares the middleware Factory with an associated generic type. 
 #[derive(Debug)]
-pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
-    pub config: ServerConfig<TInterceptor>,
+pub struct WebSocketsMiddleware<'a, TInterceptor: ConnectionHandler> {
+    pub config: ServerConfig<'a, TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
@@ -31,8 +31,8 @@ pub struct WebSocketsMiddleware<TInterceptor: ConnectionHandler> {
 }
 
 // Implement custom fucntionality for the middleware.
-impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
-    pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
+impl<'a, TInterceptor: ConnectionHandler> WebSocketsMiddleware<'a, TInterceptor> {
+    pub async fn new(config: ServerConfig<'a,TInterceptor>) -> WebSocketsMiddleware<'a, TInterceptor> {
         let (mut write,read) = Self::spin_up(&config).await;
         if let Some(init_handle) = &config.init_handle {
             match write.send(Message::Text(init_handle.to_string())).await {
@@ -47,7 +47,7 @@ impl<TInterceptor: ConnectionHandler> WebSocketsMiddleware<TInterceptor> {
         }
     }
     
-    async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
+    async fn spin_up(config: &ServerConfig<'a, TInterceptor>) -> (
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, 
         SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
     ) {
@@ -83,7 +83,7 @@ impl fmt::Display for ConnectionHandlerError {
 
 // implement ConnectionHandler for the middleware
 // This will facilitate the integration with the other elements of the suite.
-impl<TInterceptor: ConnectionHandler + Interceptor> sgc::connection::ConnectionHandler for WebSocketsMiddleware<TInterceptor> {
+impl<TInterceptor: ConnectionHandler + Interceptor + Sync> sgc::connection::ConnectionHandler for WebSocketsMiddleware<'static, TInterceptor> {
     type InEvent = ConnectionHandlerInEvent<Message>;
     type OutEvent = ConnectionHandlerOutEvent<()>;
 

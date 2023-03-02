@@ -61,8 +61,8 @@ pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
 
 #[derive(Debug)]
-pub struct GrpcMiddleware<TInterceptor: ConnectionHandler> {
-    pub config: ServerConfig<TInterceptor>,
+pub struct GrpcMiddleware<'a, TInterceptor: ConnectionHandler> {
+    pub config: ServerConfig<'a, TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     // Will the channel need additional smart pointers ? we'll figure it out.
@@ -71,9 +71,9 @@ pub struct GrpcMiddleware<TInterceptor: ConnectionHandler> {
 }
 
 
-impl<TInterceptor: ConnectionHandler> GrpcMiddleware<TInterceptor> {
+impl<'a, TInterceptor: ConnectionHandler> GrpcMiddleware<'a, TInterceptor> {
 
-    pub async fn new(config: ServerConfig<TInterceptor>) -> Self {
+    pub async fn new(config: ServerConfig<'a, TInterceptor>) -> GrpcMiddleware<'a, TInterceptor> {
         let (in_channel, out_channel): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = tokio::sync::mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
@@ -115,11 +115,14 @@ impl fmt::Display for ConnectionHandlerError {
 
 // Implement ConnectionHandler for the middleware.
 
-impl<T: ConnectionHandler + Interceptor> ConnectionHandler for GrpcMiddleware<T> {
+impl<T: ConnectionHandler + Interceptor + Sync> ConnectionHandler for GrpcMiddleware<'static, T> {
     type InEvent = ConnectionHandlerInEvent<()>;
     type OutEvent = ConnectionHandlerOutEvent<()>;
 
-    fn inject_event(&mut self, event: Self::InEvent) {}
+    fn inject_event(&mut self, event: Self::InEvent) {
+        #[cfg(debug_assertions)]
+        println!("Injecting event on GrpcMiddleware. {:?}", event);
+    }
     fn eject_event(&mut self, event: Self::OutEvent) {}
 
     fn poll(
