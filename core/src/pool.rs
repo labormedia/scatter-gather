@@ -143,17 +143,21 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.push(stream);
     }
 
-    pub async fn connect(&mut self) {
-        loop {
-            match self.local_spawns.next().await {
-                Some(a) => {
-                    #[cfg(debug_assertions)]
-                    println!("Connecting {:?} ", a);
-                    // self.collect_streams(Box::pin(a.read));
-                },
-                _ => return ()
+    pub fn connect(&mut self) {
+        let value = match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())) 
+        {
+            Poll::Ready(event) => { 
+                #[cfg(debug_assertions)]
+                println!("Poll Ready... : {event:?}");
+                event
             }
-        }
+            Poll::Pending => { 
+                #[cfg(debug_assertions)]
+                println!("Poll pending...");
+                PoolEvent::Custom
+            },
+        } ;
+        println!("Got event : {:?}", value);
     }
 
     pub async fn intercept_stream(&mut self) {
@@ -191,7 +195,8 @@ U: Send + 'static + std::fmt::Debug
                     #[cfg(debug_assertions)]
                     println!("Ready I : {:?} \n Type : {:?}", value_I, type_of(&value_I));
                     
-                    match value_I.poll(cx) {
+                    match value_I.poll(cx) 
+                    {
                         Poll::Ready(event) => {
                             #[cfg(debug_assertions)]
                             println!("Ready II : {:?}", event);

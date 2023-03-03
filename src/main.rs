@@ -21,33 +21,20 @@ pub mod orderbook {
 }
 
 fn main() {
-    
-    let pool_config = PoolConfig {
-        task_event_buffer_size: 1
-    };
-
-    let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
     let grpc_config = ServerConfig {
         url: String::from("[::1]:54001"),
         prefix: String::from("http://"),
         init_handle: None,
         handler: PhantomData
     };
-    grpc_pool.inject_connection(GrpcMiddleware::new(grpc_config));
-    let value = match grpc_pool.poll(&mut Context::from_waker(futures::task::noop_waker_ref())) 
-    {
-        Poll::Ready(event) => { 
-            #[cfg(debug_assertions)]
-            println!("Poll Ready... : {event:?}");
-            event
-        }
-        Poll::Pending => { 
-            #[cfg(debug_assertions)]
-            println!("Poll pending...");
-            PoolEvent::Custom
-        },
-    } ;
+    let pool_config = PoolConfig {
+        task_event_buffer_size: 1
+    };
 
-    println!("Got event : {:?}", value);
+    let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
+
+    grpc_pool.inject_connection(GrpcMiddleware::new(grpc_config));
+    grpc_pool.connect();
+
 
 }
