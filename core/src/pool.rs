@@ -1,4 +1,4 @@
-use crate::middleware_specs::{self, ServerConfig};
+use crate::middleware_specs::{ServerConfig};
 
 /// Pool Connection is initialized with the handler defined 
 /// for the specific Connection::source_type::handler.
@@ -18,6 +18,7 @@ use std::{
     collections::HashMap,
     pin::Pin, 
     fmt::Debug, marker::PhantomData,
+    any::type_name,
 };
 use futures::{
     channel::mpsc,
@@ -91,6 +92,10 @@ pub struct Pool<'a, T: ConnectionHandler + Debug, U> {
     pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
     established_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
     established_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
+}
+
+fn type_of<T>(_: T) -> &'static str {
+    type_name::<T>()
 }
 
 impl<'a, T, U> Pool<'a, T, U> 
@@ -171,26 +176,26 @@ U: Send + 'static + std::fmt::Debug
 
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> {
         loop {
-            match self.local_spawns.poll_next_unpin(cx) {
+            break match self.local_spawns.poll_next_unpin(cx) {
                 Poll::Pending => {
                     #[cfg(debug_assertions)]
                     println!("Poll Pending.");
                     // return Poll::Pending;
-                    // decide to block or not.
-                    continue
+                    Poll::Pending
                 },
                 Poll::Ready(None) => {
                     #[cfg(debug_assertions)]
-                    unreachable!("unreachable.")
+                    unreachable!("unreachable.");
                 },
                 Poll::Ready(Some(mut value_I)) => { 
                     #[cfg(debug_assertions)]
-                    println!("Ready I : {:?}", value_I);
+                    println!("Ready I : {:?} \n Type : {:?}", value_I, type_of(&value_I));
+                    
                     match value_I.poll(cx) {
                         Poll::Ready(event) => {
                             #[cfg(debug_assertions)]
                             println!("Ready II : {:?}", event);
-                            return Poll::Ready(
+                            Poll::Ready(
                                 PoolEvent::ConnectionEvent(
                                     PoolConnection { 
                                         conn: Box::pin(Connection {
@@ -205,17 +210,16 @@ U: Send + 'static + std::fmt::Debug
                                         handler: value_I, 
                                         event: ConnectionHandlerInEvent::Connect
                                     }
-                                ));
+                            ))
                         },
                         Poll::Pending => {
                             #[cfg(debug_assertions)]
                             println!("Pending I : {:?}", value_I);
+                            Poll::Pending
                         }
-                    };
-
+                    }
                 }
             };
-            return Poll::Pending
         }
     }
 }

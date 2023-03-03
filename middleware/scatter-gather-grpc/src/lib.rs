@@ -12,7 +12,8 @@ use scatter_gather_core::{
 };
 use std::{
     task::Poll,
-    fmt
+    fmt,
+    
 };
 use futures::{
     Future,
@@ -115,7 +116,7 @@ impl fmt::Display for ConnectionHandlerError {
 
 // Implement ConnectionHandler for the middleware.
 
-impl<T: ConnectionHandler + Interceptor + Sync> ConnectionHandler for GrpcMiddleware<'static, T> {
+impl<T: ConnectionHandler + Interceptor + Sync + fmt::Debug> ConnectionHandler for GrpcMiddleware<'static, T> {
     type InEvent = ConnectionHandlerInEvent<()>;
     type OutEvent = ConnectionHandlerOutEvent<()>;
 
@@ -130,6 +131,6 @@ impl<T: ConnectionHandler + Interceptor + Sync> ConnectionHandler for GrpcMiddle
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
-        Poll::Pending
+        Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
     }
 }
