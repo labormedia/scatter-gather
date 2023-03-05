@@ -30,13 +30,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         init_handle: None,
-        handler: PhantomData
+        handler: binance_interceptor
     };
     let config_bitstamp: ServerConfig<BitstampDepthInterceptor> = ServerConfig { 
         url: String::from("wss://ws.bitstamp.net"), 
         prefix: String::from("wss://"), 
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        handler: PhantomData
+        handler: bitstamp_interceptor
     };
 
     let mut connection1 = WebSocketsMiddleware::new(config_binance);
@@ -59,7 +59,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     bitstamp_pool.collect_streams(Box::pin(connection2.await.get_stream()));
     binance_pool.collect_streams(Box::pin(connection1.await.get_stream()));
     // new_pool.intercept_stream().await;
-
+    while let Some(Ok(Message::Text(a))) = bitstamp_pool.next().await {
+        // let b = ;
+        println!("accesing: {:?}", a)
+    };
     loop {
         match bitstamp_pool.next().await {
             None => { },
@@ -72,10 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             _ => {}
         }
     };
-    // while let Some(Ok(Message::Text(a))) = bitstamp_pool.next().await {
-    //     // let b = ;
-    //     println!("accesing: {:?}", a)
-    // }
+
     // new_pool.inject_connection(connection2.into());
     // new_pool.spawn(connection1);
     // new_pool.collect_streams(Box::pin(connection1.await.read));

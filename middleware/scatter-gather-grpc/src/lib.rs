@@ -116,7 +116,7 @@ impl fmt::Display for ConnectionHandlerError {
 
 // Implement ConnectionHandler for the middleware.
 
-impl<T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'static> for GrpcMiddleware<T> {
+impl<'b, T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'b> for GrpcMiddleware<T> {
     type InEvent = ConnectionHandlerInEvent<Result<Summary,Status>>;
     type OutEvent = ConnectionHandlerOutEvent<T>;
 

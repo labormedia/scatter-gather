@@ -1,7 +1,7 @@
 use std::task::{
     Poll,
     Context};
-use scatter_gather::source_specs::binance::BinanceDepthInterceptor;
+use scatter_gather::source_specs::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 use scatter_gather_core::{
     middleware_specs::{
         ServerConfig,
@@ -24,7 +24,7 @@ fn main() {
         url: String::from("[::1]:54001"),
         prefix: String::from("http://"),
         init_handle: None,
-        handler: || {}
+        handler: BinanceDepthInterceptor::new()
     };
     let pool_config = PoolConfig {
         task_event_buffer_size: 1
