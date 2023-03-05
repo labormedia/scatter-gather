@@ -8,9 +8,9 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Connection<'a, THandler: ConnectionHandler> {
+pub struct Connection<THandler: for<'a> ConnectionHandler<'a>> {
     pub id: ConnectionId,
-    pub source_type: ServerConfig<'a, THandler>,
+    pub source_type: ServerConfig<THandler>,
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -38,10 +38,11 @@ pub enum ConnectionHandlerOutEvent<TCustom> {
     // ConnectionError(TError)
 }
 
-pub trait ConnectionHandler: 'static + Send {
 
-    type InEvent: fmt::Debug + Send + 'static;
-    type OutEvent: fmt::Debug + Send + 'static;
+pub trait ConnectionHandler<'a>: 'a + Send {
+
+    type InEvent: fmt::Debug + Send + 'a;
+    type OutEvent: fmt::Debug + Send + 'a;
     // type Error: error::Error + fmt::Debug + Send + 'static;
 
     fn poll(
@@ -50,10 +51,10 @@ pub trait ConnectionHandler: 'static + Send {
     ) -> Poll<Self::OutEvent>;
 
     fn inject_event(&mut self, event: Self::InEvent);
-    fn eject_event(&mut self, event: Self::OutEvent);
+    fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent;
 }
 
-impl<THandler: fmt::Debug + Send + ConnectionHandler + Sync> ConnectionHandler for Connection<'static, THandler> {
+impl<'b, THandler:fmt::Debug + Send + Sync + for <'a> ConnectionHandler<'a> > ConnectionHandler<'b> for Connection<THandler> {
     type InEvent = ConnectionHandlerInEvent<THandler>;
     type OutEvent = ConnectionHandlerOutEvent<THandler>;
 
@@ -71,7 +72,7 @@ impl<THandler: fmt::Debug + Send + ConnectionHandler + Sync> ConnectionHandler f
         
     }
 
-    fn eject_event(&mut self, event: Self::OutEvent) {
-        
+    fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent {
+        event
     }
 }

@@ -73,7 +73,7 @@ impl Interceptor for BitstampDepthInterceptor {
     }
 }
 
-impl connection::ConnectionHandler for BitstampDepthInterceptor {
+impl ConnectionHandler<'_> for BitstampDepthInterceptor {
     type InEvent = connection::ConnectionHandlerInEvent<Message>;
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
@@ -88,8 +88,8 @@ impl connection::ConnectionHandler for BitstampDepthInterceptor {
     fn inject_event(&mut self, event: Self::InEvent) {
         
     }
-    fn eject_event(&mut self, event: Self::OutEvent) {
-        
+    fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Message> {
+        event
     }
 }
 

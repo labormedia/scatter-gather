@@ -62,8 +62,8 @@ pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
 
 #[derive(Debug)]
-pub struct GrpcMiddleware<'a, TInterceptor: ConnectionHandler> {
-    pub config: ServerConfig<'a, TInterceptor>,
+pub struct GrpcMiddleware<TInterceptor: for <'a> ConnectionHandler<'a>> {
+    pub config: ServerConfig<TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     // Will the channel need additional smart pointers ? we'll figure it out.
@@ -72,9 +72,9 @@ pub struct GrpcMiddleware<'a, TInterceptor: ConnectionHandler> {
 }
 
 
-impl<'a, TInterceptor: ConnectionHandler> GrpcMiddleware<'a, TInterceptor> {
+impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> {
 
-    pub async fn new(config: ServerConfig<'a, TInterceptor>) -> GrpcMiddleware<'a, TInterceptor> {
+    pub async fn new(config: ServerConfig<TInterceptor>) -> GrpcMiddleware<TInterceptor> {
         let (in_channel, out_channel): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = tokio::sync::mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
@@ -116,21 +116,24 @@ impl fmt::Display for ConnectionHandlerError {
 
 // Implement ConnectionHandler for the middleware.
 
-impl<T: ConnectionHandler + Interceptor + Sync + fmt::Debug> ConnectionHandler for GrpcMiddleware<'static, T> {
-    type InEvent = ConnectionHandlerInEvent<()>;
-    type OutEvent = ConnectionHandlerOutEvent<()>;
+impl<T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'static> for GrpcMiddleware<T> {
+    type InEvent = ConnectionHandlerInEvent<Result<Summary,Status>>;
+    type OutEvent = ConnectionHandlerOutEvent<T>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         #[cfg(debug_assertions)]
         println!("Injecting event on GrpcMiddleware. {:?}", event);
     }
-    fn eject_event(&mut self, event: Self::OutEvent) {}
+    fn eject_event(& mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<T> {
+        event
+    }
 
     fn poll(
         &mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
-        Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
+        // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
+        Poll::Pending
     }
 }

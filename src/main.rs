@@ -1,7 +1,6 @@
-use std::{task::{
+use std::task::{
     Poll,
-    Context
-}, marker::PhantomData};
+    Context};
 use scatter_gather::source_specs::binance::BinanceDepthInterceptor;
 use scatter_gather_core::{
     middleware_specs::{
@@ -25,7 +24,7 @@ fn main() {
         url: String::from("[::1]:54001"),
         prefix: String::from("http://"),
         init_handle: None,
-        handler: PhantomData
+        handler: || {}
     };
     let pool_config = PoolConfig {
         task_event_buffer_size: 1

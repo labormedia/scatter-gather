@@ -3,8 +3,7 @@
 //     i: i32
 // }
 use super::connection::ConnectionHandler;
-use std::marker::PhantomData;
-pub trait Interceptor: Send + 'static {
+pub trait Interceptor: Send {
     type Input;
     type Output;
 
@@ -12,10 +11,10 @@ pub trait Interceptor: Send + 'static {
 }
 
 #[derive(Debug)]
-pub struct ServerConfig<'a, THandler: 'a + ConnectionHandler> {
+pub struct ServerConfig<THandler: for <'a> ConnectionHandler<'a> > {
     pub url: String,
     pub prefix: String,
     pub init_handle: Option<String>,
-    pub handler: PhantomData<&'a THandler>
+    pub handler: THandler
     // pub handler: &'a THandler,
 }

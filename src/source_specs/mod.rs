@@ -24,7 +24,7 @@ pub trait Depth<T>: Send + Sync {
     fn get_asks(&self) -> &Vec<T>;
 }
 
-impl<T: Send + 'static> ConnectionHandler for Box<dyn Depth<T>> {
+impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
     type InEvent = ConnectionHandlerInEvent<Message>;
     type OutEvent = ConnectionHandlerOutEvent<Message>;
 
@@ -39,8 +39,8 @@ impl<T: Send + 'static> ConnectionHandler for Box<dyn Depth<T>> {
     fn inject_event(&mut self, event: Self::InEvent) {
         
     }
-    fn eject_event(&mut self, event: Self::OutEvent) {
-        
+    fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Message> {
+        event
     }
 }
 

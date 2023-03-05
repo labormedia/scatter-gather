@@ -19,19 +19,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let mut binance_interceptor = interceptor::new();
 
-    let config: ServerConfig<interceptor> = ServerConfig {
+    let mut config: ServerConfig<interceptor> = ServerConfig {
         url : String::from("wss://ws.bitstamp.net"),
         prefix: String::from(""),
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        handler: PhantomData
+        handler: binance_interceptor
     };
     let mut connection = WebSocketsMiddleware::new(config).await;
     connection.send(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()).await;
-    while let Some(a) = connection.read.next().await {
-        let data: interceptor = binance_interceptor.intercept(a?.into_text()?);
-        println!("Parsed: {:?}", data);
-        println!("Bids: {:?}", data.get_bids());
-        println!("Asks: {:?}", data.get_asks());
-    }
+    // while let Some(a) = connection.read.next().await {
+    //     let data: interceptor = connection. config.handler.intercept(a?.into_text()?);
+    //     println!("Parsed: {:?}", data);
+    //     println!("Bids: {:?}", data.get_bids());
+    //     println!("Asks: {:?}", data.get_asks());
+    // }
     Ok(())
 }

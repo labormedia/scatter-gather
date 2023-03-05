@@ -22,8 +22,8 @@ use std::fmt;
 
 // Declares the middleware Factory with an associated generic type. 
 #[derive(Debug)]
-pub struct WebSocketsMiddleware<'a, TInterceptor: ConnectionHandler> {
-    pub config: ServerConfig<'a, TInterceptor>,
+pub struct WebSocketsMiddleware<TInterceptor: for<'a> ConnectionHandler<'a>> {
+    pub config: ServerConfig<TInterceptor>,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
@@ -31,8 +31,8 @@ pub struct WebSocketsMiddleware<'a, TInterceptor: ConnectionHandler> {
 }
 
 // Implement custom fucntionality for the middleware.
-impl<'a, TInterceptor: ConnectionHandler> WebSocketsMiddleware<'a, TInterceptor> {
-    pub async fn new(config: ServerConfig<'a,TInterceptor>) -> WebSocketsMiddleware<'a, TInterceptor> {
+impl<TInterceptor: for<'a> ConnectionHandler<'a>> WebSocketsMiddleware<TInterceptor> {
+    pub async fn new(config: ServerConfig<TInterceptor>) -> WebSocketsMiddleware<TInterceptor> {
         let (mut write,read) = Self::spin_up(&config).await;
         if let Some(init_handle) = &config.init_handle {
             match write.send(Message::Text(init_handle.to_string())).await {
@@ -47,7 +47,7 @@ impl<'a, TInterceptor: ConnectionHandler> WebSocketsMiddleware<'a, TInterceptor>
         }
     }
     
-    async fn spin_up(config: &ServerConfig<'a, TInterceptor>) -> (
+    async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, 
         SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
     ) {
@@ -83,16 +83,16 @@ impl fmt::Display for ConnectionHandlerError {
 
 // implement ConnectionHandler for the middleware
 // This will facilitate the integration with the other elements of the suite.
-impl<TInterceptor: ConnectionHandler + Interceptor + Sync> sgc::connection::ConnectionHandler for WebSocketsMiddleware<'static, TInterceptor> {
+impl<'b, TInterceptor: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'b> for WebSocketsMiddleware<TInterceptor> {
     type InEvent = ConnectionHandlerInEvent<Message>;
-    type OutEvent = ConnectionHandlerOutEvent<()>;
+    type OutEvent = ConnectionHandlerOutEvent<TInterceptor>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         println!("Inject debug: InEvent: {:?}", event);
     }
 
-    fn eject_event(&mut self, event: Self::OutEvent) {
-        
+    fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<TInterceptor> {
+        event
     }
 
     fn poll(

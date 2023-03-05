@@ -80,7 +80,7 @@ impl Interceptor for BinanceDepthInterceptor {
     }
 }
 
-impl connection::ConnectionHandler for BinanceDepthInterceptor {
+impl ConnectionHandler<'_> for BinanceDepthInterceptor {
     type InEvent = connection::ConnectionHandlerInEvent<Message>;
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
@@ -95,8 +95,9 @@ impl connection::ConnectionHandler for BinanceDepthInterceptor {
     fn inject_event(&mut self, event: Self::InEvent) {
         println!("Hello Future! InEvent: {:?}", event);
     }
-    fn eject_event(&mut self, event: Self::OutEvent) {
+    fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Message> {
         println!("Hello Future! OutEvent: {:?}", event);
+        event
     }
 }
 
