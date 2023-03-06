@@ -4,23 +4,40 @@ use std::{
     time,
     thread,
 };
-use super::{
-    Sender,
-    Receiver,
-    Status,
-    ReceiverStream,
-    Request,
-    Response,
-    Server,
-    Arc,
-    Mutex,
-    mpsc,
-    BroadcastStream,
-    channel,
-    broadcast,
+use tokio::
+    {    
+        runtime::Runtime,
+        sync::{
+            Mutex,
+            mpsc::{
+                self, 
+                // Sender,
+                // Receiver
+            },
+            broadcast::{
+                self,
+                channel,
+                Receiver,Sender,
+            },
+        }
+    };
+use tokio_stream::{
+    wrappers::{
+        BroadcastStream,
+        ReceiverStream
+    },
     StreamExt,
-    Stream,
-    Pin
+    Stream
+};
+use tonic::{
+    transport::Server, 
+    Request, 
+    Response, 
+    Status,
+    codegen::{
+        Arc,
+        Pin
+    }
 };
 use futures::FutureExt;
 use orderbook::orderbook_aggregator_server::{
@@ -43,7 +60,8 @@ pub struct OrderBook
 {
     pub rx: tokio::sync::broadcast::Sender<Result<Summary, Status>>,
     last_state: Summary,
-    state_buffer: Arc<Mutex<Vec<Summary>>>
+    state_buffer: Arc<Mutex<Vec<Summary>>>,
+    rt: Runtime
 }
 
 impl OrderBook {
@@ -53,7 +71,8 @@ impl OrderBook {
         Self {
             rx: broadcaster,
             last_state: Summary::default(),
-            state_buffer: Arc::new(Mutex::new(vec!()))
+            state_buffer: Arc::new(Mutex::new(vec!())),
+            rt: Runtime::new().unwrap()
          }
     }
     pub fn update_collector(mut self, state: Summary) {
@@ -93,20 +112,7 @@ impl OrderbookAggregator for OrderBook {
     }
 }
 
-pub async fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::error::Error>> {
-    #[cfg(debug_assertions)]
-    println!("Starting service.");
-    let service = OrderbookAggregatorServer::new(inner);
-    let b = tokio::spawn(async {
-        #[cfg(debug_assertions)]
-        println!("Building server.");
-        Server::builder().add_service(service).serve("[::1]:54001".parse().unwrap()).await.unwrap();
-        #[cfg(debug_assertions)]
-        println!("Server builder passed");
-    });
-    
-    Ok(())
-}
+
 
 pub fn intercept(mut req: Request<()>) -> Result<Request<()>, Status> {
     #[cfg(debug_assertions)]
@@ -121,4 +127,20 @@ pub fn intercept(mut req: Request<()>) -> Result<Request<()>, Status> {
 
 struct Extended {
     intercepted_data: String,
+}
+
+pub async fn server(address: &str, inner: OrderBook) -> Result<Runtime, Box<dyn std::error::Error>> {
+    let rt = Runtime::new()?;
+    #[cfg(debug_assertions)]
+    println!("Starting service.");
+    let service = OrderbookAggregatorServer::new(inner);
+    let b = rt.spawn(async {
+        #[cfg(debug_assertions)]
+        println!("Building server.");
+        Server::builder().add_service(service).serve("[::1]:54001".parse().unwrap()).await.unwrap();
+        #[cfg(debug_assertions)]
+        println!("Server builder passed");
+    });
+    
+    Ok(rt)
 }

@@ -15,6 +15,7 @@ use scatter_gather_core::{
 };
 use scatter_gather_grpc::GrpcMiddleware;
 use scatter_gather_websockets::WebSocketsMiddleware;
+use tokio;
 mod source_specs;
 pub mod orderbook {
     tonic::include_proto!("orderbook"); // The string specified here must match the proto package name
@@ -35,6 +36,4 @@ fn main() {
 
     grpc_pool.inject_connection(GrpcMiddleware::new(grpc_config));
     grpc_pool.connect();
-
-
 }
