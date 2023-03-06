@@ -87,8 +87,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // handle.await?;
     // let _client = tokio::spawn( async { let _ = client().await; } );
     // let _client = tokio::spawn( async { let _ = client().await; } );
-    in_broadcast_clone2.send(Ok(Summary::default())).expect("sender: it should voice to receiver sent successfully");
+    in_broadcast_clone2.send(Ok(new_state)).expect("sender: it should voice to receiver sent successfully");
 
+    let _client = tokio::spawn( async { let _ = client().await; } );
+    let _client = tokio::spawn( async { let _ = client().await; } );
     let _client = tokio::spawn( async { let _ = client().await; } ).await;
     // let _ = client().await;
     
@@ -108,19 +110,29 @@ async fn client() -> Result<(), Box<dyn std::error::Error>> {
     let request = tonic::Request::new( schema_specific::orderbook::Empty {});
     let mut stream = channel.book_summary(request).await?.into_inner();
     // channel.book_summary_feed(stream).await;
-    let point_count = 10;
-    let mut points = vec![];
-    for _ in 0..=point_count {
-        points.push(Summary::default())
+    let point_count = 9;
+    
+    for i in 7..=point_count {
+        let mut points = vec![];
+        points.push(
+            Summary 
+                { 
+                    spread: 0.001*i as f64, 
+                    bids: [Level { exchange: String::from("best"), 
+                    price: 0.2, amount: 0.4 } ].to_vec(), 
+                    asks: [].to_vec()
+                }
+        );
+        println!("Traversing {} points", points.len());
+        let request = tonic::Request::new(futures::stream::iter(points));
+
+        channel.book_summary_feed(request).await;
     }
 
-    println!("Traversing {} points", points.len());
-    let request = tonic::Request::new(futures::stream::iter(points));
-    channel.book_summary_feed(request).await;
     println!("RESPONSE={:?}", stream);
     while let Ok(item) = stream.message().await {
         match item {
-            Some(ref a) => println!("\titem: {:?}", a),
+            Some( a) => println!("\tItem: {:?}", a),
             None => { println!("None") }
         }
     }

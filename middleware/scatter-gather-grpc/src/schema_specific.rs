@@ -108,14 +108,18 @@ impl OrderbookAggregator for OrderBook {
     }
     async fn book_summary_feed(&self, stream: tonic::Request<tonic::Streaming<Summary>>) -> Result<tonic::Response<orderbook::Empty>, Status>  {
         println!("book_summary_feed");
-        self.tx.send(Ok(Summary 
-            { 
-                spread: 0.017 as f64, 
-                bids: [Level { exchange: String::from("best"), 
-                price: 0.2, amount: 0.4 } ].to_vec(), 
-                asks: [].to_vec()
-            })).await;
-        for i in 5..9 {
+        // self.tx.send(Ok(Summary 
+        //     { 
+        //         spread: 0.017 as f64, 
+        //         bids: [Level { exchange: String::from("best"), 
+        //         price: 0.2, amount: 0.4 } ].to_vec(), 
+        //         asks: [].to_vec()
+        //     })).await;
+        if let Some(check) = stream.into_inner().next().await {
+            println!("Check : {:?}", check);
+            self.rx.clone().send(check);
+        };
+        for i in 89..89 {
             self.rx.clone().send(Ok(Summary 
                 { 
                     spread: 0.001*i as f64, 
