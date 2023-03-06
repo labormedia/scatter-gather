@@ -67,7 +67,7 @@ pub struct GrpcMiddleware<TInterceptor: for <'a> ConnectionHandler<'a>> {
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     // Will the channel need additional smart pointers ? we'll figure it out.
-    pub write: mpsc::Sender<Result<Summary,Status>>,
+    // pub write: ReceiverStream<Result<Summary, Status>>,
     pub read: broadcast::Sender<Result<Summary, Status>> //Arc<Mutex<Receiver<Result<Summary, Status>>>> 
 }
 
@@ -79,11 +79,11 @@ impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> 
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
-        let channels = schema_specific::OrderBook::new(in_channel, in_broadcast);
+        let channels = schema_specific::OrderBook::new(in_broadcast);
 
         Self {
             config,
-            write: channels.tx,
+            // write: channels.tx,
             read: channels.rx // Arc::new(Mutex::new(read))
         }
 

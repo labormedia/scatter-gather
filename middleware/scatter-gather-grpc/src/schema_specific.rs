@@ -41,7 +41,7 @@ pub mod orderbook {
 #[derive(Debug)]
 pub struct OrderBook
 {
-    pub tx: mpsc::Sender<Result<Summary, Status>>, // Arc<Mutex<Sender<Result<Summary, Status>>>>,
+    // pub tx: ReceiverStream<Result<Summary, Status>>, // Arc<Mutex<Sender<Result<Summary, Status>>>>,
     // pub rx: Arc<Mutex<Receiver<Result<Summary, Status>>>>,
     pub rx: tokio::sync::broadcast::Sender<Result<Summary, Status>>,//Receiver<Result<Summary, Status>>,//Arc<Mutex<Receiver<Result<Summary, Status>>>>,
     // pub collector: Vec<tokio::task::JoinHandle<()>>
@@ -50,12 +50,12 @@ pub struct OrderBook
 }
 
 impl OrderBook {
-    pub fn new(mpsc_sender: mpsc::Sender<Result<Summary, Status>>, broadcaster: Sender<Result<Summary, Status>>) -> Self {
+    pub fn new(broadcaster: Sender<Result<Summary, Status>>) -> Self {
         // let (tx, rx) = channel(20);
         // let another_broadcast_sender = Sender::clone(&tx);
         println!("Injecting channels.");
         Self {
-            tx: mpsc_sender, 
+            // tx: mpsc_sender, 
             // rx: Arc::new(Mutex::new(rx)),
             rx: broadcaster,
             // collector: vec!()
@@ -108,13 +108,6 @@ impl OrderbookAggregator for OrderBook {
     }
     async fn book_summary_feed(&self, stream: tonic::Request<tonic::Streaming<Summary>>) -> Result<tonic::Response<orderbook::Empty>, Status>  {
         println!("book_summary_feed");
-        // self.tx.send(Ok(Summary 
-        //     { 
-        //         spread: 0.017 as f64, 
-        //         bids: [Level { exchange: String::from("best"), 
-        //         price: 0.2, amount: 0.4 } ].to_vec(), 
-        //         asks: [].to_vec()
-        //     })).await;
         let mut inner  = stream.into_inner();
         while let Some(check) = inner.next().await {
             println!("Check : {:?}", check);

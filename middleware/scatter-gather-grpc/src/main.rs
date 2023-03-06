@@ -2,7 +2,7 @@ use scatter_gather_grpc::schema_specific::{self, OrderBook, orderbook::Summary, 
 use tokio::sync::broadcast;
 use std::{
     thread,
-    time
+    time, iter::Sum
 };
 use tonic::{
     codegen::Arc,
@@ -25,27 +25,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (in_channel, out_channel): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = tokio::sync::mpsc::channel(32);
     let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
     let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
-    let in_broadcast_clone2 = broadcast::Sender::clone(&in_broadcast);        let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
-    let channels = OrderBook::new(in_channel, in_broadcast_clone);
+    // let mut mpsc_receiver_orderbook = ReceiverStream::new(out_channel);
+
+    let channels = OrderBook::new(in_broadcast_clone);
     
     schema_specific::server(ADDRESS, channels).await.unwrap();
 
     let new_state = Summary { spread: 0.001*23 as f64, bids: [Level { exchange: String::from("best"), price: 0.2, amount: 0.4 } ].to_vec(), asks: [].to_vec() };
     println!("Creating orderbook");
 
-    in_broadcast_clone2.send(Ok(new_state)).expect("sender: it should voice to receiver sent successfully");
 
-    let client_buf = tokio::spawn( async { let _ = client_buf().await; } );
+    let in_broadcast_clone2 = broadcast::Sender::clone(&in_broadcast); 
+
+    let client_buf = tokio::spawn( async move {
+        // let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
+        let _ = client_buf(out_channel).await; 
+    } );
     let _client = tokio::spawn( async { let _ = client().await; } );
     let _client = tokio::spawn( async { let _ = client().await; } );
     let _client = tokio::spawn( async { let _ = client().await; } );
+    let _streamer = tokio::spawn(async move {
+        loop {
+            for i in 66..=68 {
+                println!("Sending message from streamer.");
+                in_channel.send(
+                    Ok(                
+                        Summary 
+                            { 
+                                spread: 0.001*i as f64, 
+                                bids: [Level { exchange: String::from("very best"), 
+                                price: 0.2, amount: 0.4 } ].to_vec(), 
+                                asks: [].to_vec()
+                            })).await;
+            }
+        }
+
+    });
     client_buf.await;
     println!("Released");
     Ok(())
 }
 
-async fn client_buf() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting Client (Feed).");
+async fn client_buf(mut buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting Client (Buffer).");
 
     let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await?;
@@ -69,6 +91,10 @@ async fn client_buf() -> Result<(), Box<dyn std::error::Error>> {
     let request = tonic::Request::new(input);
 
     channel.book_summary_feed(request).await;
+
+    while let Some(msg) = buffer.recv().await {
+        println!("Received while in client_bud: {:?}", msg);
+    }
 
 
     Ok(())
