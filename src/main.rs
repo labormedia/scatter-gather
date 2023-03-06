@@ -14,6 +14,7 @@ use scatter_gather_core::{
     }
 };
 use scatter_gather_grpc::GrpcMiddleware;
+use scatter_gather_websockets::WebSocketsMiddleware;
 mod source_specs;
 pub mod orderbook {
     tonic::include_proto!("orderbook"); // The string specified here must match the proto package name

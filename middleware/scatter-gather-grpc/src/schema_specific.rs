@@ -77,53 +77,52 @@ impl OrderBook {
 #[tonic::async_trait]
 impl OrderbookAggregator for OrderBook {
     // type BookSummaryStream = ReceiverStream<Result<Summary, Status>>;
-    type BookSummaryStream = Pin<Box<dyn Stream<Item = Result<Summary, Status>> + Send + Sync + 'static>>;
+    type BookSummaryStream = Pin<Box<dyn Stream<Item = Result<Summary, Status>> + Send + Sync>>;
     async fn book_summary(&self, _request: Request<Empty>) -> Result<Response<Self::BookSummaryStream>, Status>
     {
-        println!("Starting response");
-        let mut rx2 = self.rx.subscribe();
-        let handle = tokio::spawn( async move {
-            println!("End of handle");
-        });
+        println!("Starting book summary response");
+        let rx2 = self.rx.subscribe();
+        // let lock = &self.state_buffer.lock().await.iter();
+        // let handle = tokio::spawn( async move {
+        //     println!("End of handle");
+        //     // rx2.recv();
+        //     // let a = lock.map(|c| {});
+        //     let test_msg = Summary 
+        //         { 
+        //             spread: 0.11 as f64, 
+        //             bids: [Level { exchange: String::from("best"), 
+        //             price: 0.2, amount: 0.4 } ].to_vec(),   
+        //             asks: [].to_vec()
+        //         };
+
+
+        //     return Ok(test_msg)
+        // });
         println!("Continue");
         let stream = BroadcastStream::new(rx2)
             .filter_map(|res| { res.ok() });
             // .map(Ok);
         let stream: Self::BookSummaryStream = Box::pin(stream);
         let response = Response::new(stream);
-        let mille_plateaux = time::Duration::from_millis(1000);
-        thread::sleep(mille_plateaux);
-        match handle.await {
-                    
-            Ok(a) => {
-                println!("Handle {:?}", a);
-                for i in 1..3 {
-                    self.tx.clone().send(Ok(Summary 
-                        { 
-                            spread: 0.001*i as f64, 
-                            bids: [Level { exchange: String::from("best"), 
-                            price: 0.2, amount: 0.4 } ].to_vec(), 
-                            asks: [].to_vec()
-                        })).await;
-                    
-                };
-                
-            },
-            Err(e) => println!("Erronous handle {:?}", e),
-        };
-        println!("ending response");
-
         Ok(response)
     }
-    async fn book_summary_feed(&self, stream: tonic::Request<tonic::Streaming<super::Summary>>) -> Result<tonic::Response<orderbook::Empty>, Status>  {
+    async fn book_summary_feed(&self, stream: tonic::Request<tonic::Streaming<Summary>>) -> Result<tonic::Response<orderbook::Empty>, Status>  {
+        println!("book_summary_feed");
+        self.tx.send(Ok(Summary 
+            { 
+                spread: 0.017 as f64, 
+                bids: [Level { exchange: String::from("best"), 
+                price: 0.2, amount: 0.4 } ].to_vec(), 
+                asks: [].to_vec()
+            })).await;
         for i in 5..9 {
-            self.tx.clone().send(Ok(Summary 
+            self.rx.clone().send(Ok(Summary 
                 { 
                     spread: 0.001*i as f64, 
                     bids: [Level { exchange: String::from("best"), 
                     price: 0.2, amount: 0.4 } ].to_vec(), 
                     asks: [].to_vec()
-                })).await;
+                }));
             
         };
         Ok(Response::new(orderbook::Empty {}))
@@ -136,7 +135,8 @@ pub async fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::
     // let order_book_aggregator = OrderBook::new(sender);
     // let service = OrderbookAggregatorServer::with_interceptor(order_book_aggregator, intercept);
     let service = OrderbookAggregatorServer::new(inner);
-    tokio::spawn(async {
+    let b = tokio::spawn(async {
+        println!("Building server.");
         Server::builder().add_service(service).serve("[::1]:54001".parse().unwrap()).await.unwrap();
         println!("Server builder passed");
     });

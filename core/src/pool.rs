@@ -223,7 +223,7 @@ U: Send + 'static + std::fmt::Debug
                             Poll::Pending
                         }
                     }
-                }
+                },
             };
         }
     }
