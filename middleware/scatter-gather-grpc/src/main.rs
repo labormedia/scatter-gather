@@ -29,91 +29,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let channels = OrderBook::new(in_channel, in_broadcast_clone);
     
     schema_specific::server(ADDRESS, channels).await.unwrap();
-    let handle = tokio::spawn(async move {
 
-        // we test the broadcast a priori
-        
-        // in_broadcast_clone2.send(Ok(Summary::default())).expect("sender: it should voice to receiver sent successfully");
-        // println!("stream tested");
-        // channels.book_summary_feed()
-        // We block the task to the channel bundling
-        // channels.tx.clone().send(Ok(Summary 
-        //     { 
-        //         spread: 0.014 as f64, 
-        //         bids: [Level { exchange: String::from("best"), 
-        //         price: 0.2, amount: 0.4 } ].to_vec(), 
-        //         asks: [].to_vec()
-        //     }));
-        // loop {
-        //     match mpsc_receiver_stream.next().await {
-        //         Some(data) => {
-        //                 println!("got data: {:?}", data);
-        //                 in_broadcast
-        //                     .send(data)
-        //                     .expect("sender: it should voice to receiver sent successfully");
-        //         },
-        //         None => {
-        //             println!("debugging on None");
-        //             in_broadcast
-        //             .send(Ok(Summary 
-        //                 { 
-        //                     spread: 0.001*7 as f64, 
-        //                     bids: [Level { exchange: String::from("dummy data"), 
-        //                     price: 0.2, amount: 0.4 } ].to_vec(), 
-        //                     asks: [].to_vec() 
-        //                 }))
-        //             .expect("sender: it should voice to receiver sent successfully");
-        //         }
-        //     }
-        // }
-        // while let Some(data) = mpsc_receiver_stream.next().await {
-        //     println!("got data: {:?}", data);
-        //     in_broadcast
-        //         .send(Ok(Summary 
-        //             { 
-        //                 spread: 0.001*5 as f64, 
-        //                 bids: [Level { exchange: String::from("best"), 
-        //                 price: 0.2, amount: 0.4 } ].to_vec(), 
-        //                 asks: [].to_vec() 
-        //             }))
-        //         .expect("sender: it should voice to receiver sent successfully");
-        // }
-    });
     let new_state = Summary { spread: 0.001*23 as f64, bids: [Level { exchange: String::from("best"), price: 0.2, amount: 0.4 } ].to_vec(), asks: [].to_vec() };
     println!("Creating orderbook");
 
-    // channels.tx.send(Ok(new_state.clone()));
-    // channels.tx.send(Ok(new_state.clone()));
-    // handle.await?;
-    // let _client = tokio::spawn( async { let _ = client().await; } );
-    // let _client = tokio::spawn( async { let _ = client().await; } );
     in_broadcast_clone2.send(Ok(new_state)).expect("sender: it should voice to receiver sent successfully");
 
+    let client_buf = tokio::spawn( async { let _ = client_buf().await; } );
     let _client = tokio::spawn( async { let _ = client().await; } );
     let _client = tokio::spawn( async { let _ = client().await; } );
-    let _client = tokio::spawn( async { let _ = client().await; } ).await;
-    // let _ = client().await;
-    
-
-    // let _check = client().await;
+    let _client = tokio::spawn( async { let _ = client().await; } );
+    client_buf.await;
     println!("Released");
     Ok(())
 }
 
-
-async fn client() -> Result<(), Box<dyn std::error::Error>> {
+async fn client_buf() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Client (Feed).");
 
     let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await?;
-    // let mut second_channel = schema_specific::orderbook::orderbook_aggregator_client
-    let request = tonic::Request::new( schema_specific::orderbook::Empty {});
-    let mut stream = channel.book_summary(request).await?.into_inner();
-    // channel.book_summary_feed(stream).await;
+
     let point_count = 72;
     
     let mut points = vec![];
-    for i in 13..=point_count {
+    for i in 51..=point_count {
         points.push(
             Summary 
                 { 
@@ -123,16 +63,28 @@ async fn client() -> Result<(), Box<dyn std::error::Error>> {
                     asks: [].to_vec()
                 }
         );
-        println!("Traversing {} points", points.len());
 
     }
-    let request = tonic::Request::new(futures::stream::iter(points).take(2));
+    let input = futures::stream::iter(points).take(15);
+    let request = tonic::Request::new(input);
 
     channel.book_summary_feed(request).await;
+
+
+    Ok(())
+}
+
+async fn client() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting Client (Feed).");
+
+    let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
+        .await?;
+    let request = tonic::Request::new( schema_specific::orderbook::Empty {});
+    let mut stream = channel.book_summary(request).await?.into_inner();
     println!("RESPONSE={:?}", stream);
     while let Ok(item) = stream.message().await {
         match item {
-            Some( a) => println!("\tItem: {:?}", a),
+            Some( a) => println!("\tClient Item: {:?}", a),
             None => { println!("None") }
         }
     }
