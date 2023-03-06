@@ -1,22 +1,18 @@
-use scatter_gather_grpc::schema_specific::{self, OrderBook, orderbook::Summary, orderbook::{Level, orderbook_aggregator_server::OrderbookAggregator}};
-use tokio::sync::broadcast;
-use std::{
-    thread,
-    time, iter::Sum
+use scatter_gather_grpc::schema_specific::{
+    self, 
+    OrderBook, 
+    orderbook::{
+        Summary, 
+        Level
+    }
 };
-use tonic::{
-    codegen::Arc,
-    Status
-};
-use tokio::sync::mpsc;
-use tokio_stream::{
-    wrappers::{
-        BroadcastStream,
-        ReceiverStream
-    },
-    StreamExt,
-    Stream
-};
+use tokio::
+    sync::{
+        broadcast,
+        mpsc
+    };
+use tonic::Status;
+use tokio_stream::StreamExt;
 
 const ADDRESS: &str = "http://[::1]:54001";
 
@@ -27,16 +23,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
     let channels = OrderBook::new(in_broadcast_clone);
     
-    schema_specific::server(ADDRESS, channels).await.unwrap();
-
-    let new_state = Summary { spread: 0.001*23 as f64, bids: [Level { exchange: String::from("best"), price: 0.2, amount: 0.4 } ].to_vec(), asks: [].to_vec() };
-    println!("Creating orderbook");
-
-
-    let in_broadcast_clone2 = broadcast::Sender::clone(&in_broadcast); 
+    schema_specific::server(ADDRESS, channels).await.unwrap(); 
 
     let client_buf = tokio::spawn( async move {
-        // let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
         let _ = client_buf(out_channel).await; 
     } );
     let _client = tokio::spawn( async { let _ = client(1).await; } );
@@ -44,8 +33,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _client = tokio::spawn( async { let _ = client(3).await; } );
     let _streamer = tokio::spawn(async move {
         for i in 66..=168 {
+            #[cfg(debug_assertions)]
             println!("Sending message from streamer.");
-            in_channel.send(
+            match in_channel.send(
                 Ok(                
                     Summary 
                         { 
@@ -53,48 +43,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             bids: [Level { exchange: String::from("very best"), 
                             price: 0.2, amount: 0.4 } ].to_vec(), 
                             asks: [].to_vec()
-                        })).await;
+                        }
+                )
+            ).await
+                {
+                    Ok(msg) => {
+                        #[cfg(debug_assertions)]
+                        println!("Send succesful, {:?}", msg);
+                    },
+                    Err(e) => {
+                        #[cfg(debug_assertions)]
+                        println!("Received error while sending messages : {:?}", e);
+                    }
+                };
         }
-
     });
-    client_buf.await;
+    client_buf.await?;
+    #[cfg(debug_assertions)]
     println!("Released");
     Ok(())
 }
 
 async fn client_buf(mut buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(debug_assertions)]
     println!("Starting Client (Buffer).");
-
+    // Creates a new client for accesing the gRPC service.
     let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await?;
 
     while let Some(Ok(msg)) = buffer.recv().await {
-        println!("Received while in client_bud: {:?}", msg);
+        #[cfg(debug_assertions)]
+        println!("Received while in client_buf: {:?}", msg);
         let input = futures::stream::iter([msg]).take(1);
         let request = tonic::Request::new(input);
-        channel.book_summary_feed(request).await;
+        channel.book_summary_feed(request).await?;
     }
-
-
     Ok(())
 }
 
 async fn client(id: i32) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(debug_assertions)]
     println!("Starting Client (Feed).");
 
     let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await?;
     let request = tonic::Request::new( schema_specific::orderbook::Empty {});
     let mut stream = channel.book_summary(request).await?.into_inner();
-    println!("RESPONSE={:?}", stream);
+    #[cfg(debug_assertions)]
+    println!("RESPONSE = {:?}", stream);
     while let Ok(item) = stream.message().await {
         match item {
-            Some( a) => println!("\tClient {:?} Item: {:?}", id, a),
-            None => { println!("None") }
+            Some( a) => {
+                #[cfg(debug_assertions)]
+                println!("\tClient {:?} Item: {:?}", id, a)
+            },
+            None => { 
+                #[cfg(debug_assertions)]
+                println!("None") 
+            }
         }
     }
-
-
     Ok(())
 }
 
@@ -105,10 +113,7 @@ mod tests {
         self, 
         OrderBook, 
         orderbook::Summary, 
-        orderbook::{
-            Level, 
-            orderbook_aggregator_server::OrderbookAggregator
-        }
+        orderbook::Level, 
     };
     use tokio_stream::StreamExt;
     use tokio::sync::broadcast;
@@ -122,7 +127,7 @@ mod tests {
         let channels = OrderBook::new(in_broadcast_clone);
         
         schema_specific::server(ADDRESS, channels).await.unwrap();
-        let client_buf = tokio::spawn( async move {
+        let _client_buf = tokio::spawn( async move {
             // let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
             let _ = client_buf_test().await; 
         } );
@@ -153,7 +158,7 @@ mod tests {
         let input = futures::stream::iter(points).take(15);
         let request = tonic::Request::new(input);
     
-        channel.book_summary_feed(request).await;
+        channel.book_summary_feed(request).await?;
     
     
         Ok(())

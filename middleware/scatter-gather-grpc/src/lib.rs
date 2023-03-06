@@ -23,7 +23,7 @@ use futures::{
     }, 
     io::Empty
 };
-use schema_specific::orderbook::{Summary, self};
+use schema_specific::orderbook::{Summary, self, orderbook_aggregator_server::OrderbookAggregator};
 use tonic::{
     transport::Server, 
     Request, 
@@ -64,40 +64,38 @@ const ADDRESS: &str = "http://[::1]:54001";
 #[derive(Debug)]
 pub struct GrpcMiddleware<TInterceptor: for <'a> ConnectionHandler<'a>> {
     pub config: ServerConfig<TInterceptor>,
-    // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
-    // pub response: http::Response<()>
-    // Will the channel need additional smart pointers ? we'll figure it out.
-    // pub write: ReceiverStream<Result<Summary, Status>>,
-    pub read: broadcast::Sender<Result<Summary, Status>> //Arc<Mutex<Receiver<Result<Summary, Status>>>> 
 }
 
 
 impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> {
 
     pub async fn new(config: ServerConfig<TInterceptor>) -> GrpcMiddleware<TInterceptor> {
-        let (in_channel, out_channel): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = tokio::sync::mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
-        let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
-        let channels = schema_specific::OrderBook::new(in_broadcast);
-
+        let channels = schema_specific::OrderBook::new(in_broadcast_clone);
+        schema_specific::server(ADDRESS, channels).await;
         Self {
             config,
-            // write: channels.tx,
-            read: channels.rx // Arc::new(Mutex::new(read))
         }
 
     }
 
-    // async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
-    //     mpsc::Sender<Result<Summary,Status>>, 
-    //     broadcast::Sender<Result<Summary, Status>>
-    // ) {
-
-
-    //     // generic blocking channel
-    //     (in_channel, in_broadcast_clone)
-    // }
+    async fn client_buf(mut buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
+        #[cfg(debug_assertions)]
+        println!("Starting Client (Buffer).");
+        // Creates a new client for accesing the gRPC service.
+        let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
+            .await?;
+    
+        while let Some(Ok(msg)) = buffer.recv().await {
+            #[cfg(debug_assertions)]
+            println!("Received while in client_buf: {:?}", msg);
+            let input = futures::stream::iter([msg]).take(1);
+            let request = tonic::Request::new(input);
+            channel.book_summary_feed(request).await?;
+        }
+        Ok(())
+    }
 
 }
 

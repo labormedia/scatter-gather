@@ -41,24 +41,17 @@ pub mod orderbook {
 #[derive(Debug)]
 pub struct OrderBook
 {
-    // pub tx: ReceiverStream<Result<Summary, Status>>, // Arc<Mutex<Sender<Result<Summary, Status>>>>,
-    // pub rx: Arc<Mutex<Receiver<Result<Summary, Status>>>>,
-    pub rx: tokio::sync::broadcast::Sender<Result<Summary, Status>>,//Receiver<Result<Summary, Status>>,//Arc<Mutex<Receiver<Result<Summary, Status>>>>,
-    // pub collector: Vec<tokio::task::JoinHandle<()>>
+    pub rx: tokio::sync::broadcast::Sender<Result<Summary, Status>>,
     last_state: Summary,
     state_buffer: Arc<Mutex<Vec<Summary>>>
 }
 
 impl OrderBook {
     pub fn new(broadcaster: Sender<Result<Summary, Status>>) -> Self {
-        // let (tx, rx) = channel(20);
-        // let another_broadcast_sender = Sender::clone(&tx);
+        #[cfg(debug_assertions)]
         println!("Injecting channels.");
         Self {
-            // tx: mpsc_sender, 
-            // rx: Arc::new(Mutex::new(rx)),
             rx: broadcaster,
-            // collector: vec!()
             last_state: Summary::default(),
             state_buffer: Arc::new(Mutex::new(vec!()))
          }
@@ -69,47 +62,30 @@ impl OrderBook {
     pub async fn send_state(&mut self, state:Summary) {
         let arc_ref = Arc::clone(&self.state_buffer);
         let mut lock = arc_ref.lock().await;
-        // lock.send(Ok(Summary::default())).await;
         lock.push(state);
     }
 }
 
 #[tonic::async_trait]
 impl OrderbookAggregator for OrderBook {
-    // type BookSummaryStream = ReceiverStream<Result<Summary, Status>>;
     type BookSummaryStream = Pin<Box<dyn Stream<Item = Result<Summary, Status>> + Send + Sync>>;
     async fn book_summary(&self, _request: Request<Empty>) -> Result<Response<Self::BookSummaryStream>, Status>
     {
+        #[cfg(debug_assertions)]
         println!("Starting book summary response");
         let rx2 = self.rx.subscribe();
-        // let lock = &self.state_buffer.lock().await.iter();
-        // let handle = tokio::spawn( async move {
-        //     println!("End of handle");
-        //     // rx2.recv();
-        //     // let a = lock.map(|c| {});
-        //     let test_msg = Summary 
-        //         { 
-        //             spread: 0.11 as f64, 
-        //             bids: [Level { exchange: String::from("best"), 
-        //             price: 0.2, amount: 0.4 } ].to_vec(),   
-        //             asks: [].to_vec()
-        //         };
-
-
-        //     return Ok(test_msg)
-        // });
-        println!("Continue");
         let stream = BroadcastStream::new(rx2)
             .filter_map(|res| { res.ok() });
-            // .map(Ok);
         let stream: Self::BookSummaryStream = Box::pin(stream);
         let response = Response::new(stream);
         Ok(response)
     }
     async fn book_summary_feed(&self, stream: tonic::Request<tonic::Streaming<Summary>>) -> Result<tonic::Response<orderbook::Empty>, Status>  {
-        println!("book_summary_feed");
+        #[cfg(debug_assertions)]
+        println!("Starting book_summary_feed");
         let mut inner  = stream.into_inner();
         while let Some(check) = inner.next().await {
+            #[cfg(debug_assertions)]
             println!("Check : {:?}", check);
             self.rx.clone().send(check);
         };
@@ -118,14 +94,14 @@ impl OrderbookAggregator for OrderBook {
 }
 
 pub async fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(debug_assertions)]
     println!("Starting service.");
-    // let addr: _ = "[::1]:54001".parse()?;
-    // let order_book_aggregator = OrderBook::new(sender);
-    // let service = OrderbookAggregatorServer::with_interceptor(order_book_aggregator, intercept);
     let service = OrderbookAggregatorServer::new(inner);
     let b = tokio::spawn(async {
+        #[cfg(debug_assertions)]
         println!("Building server.");
         Server::builder().add_service(service).serve("[::1]:54001".parse().unwrap()).await.unwrap();
+        #[cfg(debug_assertions)]
         println!("Server builder passed");
     });
     
@@ -133,6 +109,7 @@ pub async fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::
 }
 
 pub fn intercept(mut req: Request<()>) -> Result<Request<()>, Status> {
+    #[cfg(debug_assertions)]
     println!("Intercepting request: {:?}", req);
 
     req.extensions_mut().insert(Extended {
