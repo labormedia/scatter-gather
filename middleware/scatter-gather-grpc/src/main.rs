@@ -6,11 +6,13 @@ use scatter_gather_grpc::schema_specific::{
         Level
     }
 };
-use tokio::
+use tokio::{
+    runtime::Runtime,
     sync::{
         broadcast,
         mpsc
-    };
+    }
+};
 use tonic::Status;
 use tokio_stream::StreamExt;
 
@@ -22,8 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
     let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
     let channels = OrderBook::new(in_broadcast_clone);
-    
-    schema_specific::server(ADDRESS, channels).await.unwrap(); 
+    let rt = Runtime::new()?;
+    schema_specific::server(ADDRESS, channels, rt).await?; 
 
     let client_buf = tokio::spawn( async move {
         let _ = client_buf(out_channel).await; 

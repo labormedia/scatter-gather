@@ -46,7 +46,7 @@ use tokio::
             channel,
             Receiver,Sender,
         },
-    }
+    }, runtime::Runtime
 };
 use tokio_stream::{
     wrappers::{
@@ -73,7 +73,8 @@ impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> 
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = schema_specific::OrderBook::new(in_broadcast_clone);
-        schema_specific::server(ADDRESS, channels).await;
+        let rt = Runtime::new().expect("Cannot create Runtime.");
+        schema_specific::server(ADDRESS, channels, rt).await.expect("Couldn't start server.");
         Self {
             config,
         }

@@ -61,7 +61,6 @@ pub struct OrderBook
     pub rx: tokio::sync::broadcast::Sender<Result<Summary, Status>>,
     last_state: Summary,
     state_buffer: Arc<Mutex<Vec<Summary>>>,
-    rt: Runtime
 }
 
 impl OrderBook {
@@ -72,7 +71,6 @@ impl OrderBook {
             rx: broadcaster,
             last_state: Summary::default(),
             state_buffer: Arc::new(Mutex::new(vec!())),
-            rt: Runtime::new().unwrap()
          }
     }
     pub fn update_collector(mut self, state: Summary) {
@@ -129,8 +127,8 @@ struct Extended {
     intercepted_data: String,
 }
 
-pub async fn server(address: &str, inner: OrderBook) -> Result<Runtime, Box<dyn std::error::Error>> {
-    let rt = Runtime::new()?;
+pub async fn server(address: &str, inner: OrderBook, rt: Runtime) -> Result<Runtime, Box<dyn std::error::Error>> {
+
     #[cfg(debug_assertions)]
     println!("Starting service.");
     let service = OrderbookAggregatorServer::new(inner);
