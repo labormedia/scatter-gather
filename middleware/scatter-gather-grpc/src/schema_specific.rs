@@ -115,19 +115,10 @@ impl OrderbookAggregator for OrderBook {
         //         price: 0.2, amount: 0.4 } ].to_vec(), 
         //         asks: [].to_vec()
         //     })).await;
-        if let Some(check) = stream.into_inner().next().await {
+        let mut inner  = stream.into_inner();
+        while let Some(check) = inner.next().await {
             println!("Check : {:?}", check);
             self.rx.clone().send(check);
-        };
-        for i in 89..89 {
-            self.rx.clone().send(Ok(Summary 
-                { 
-                    spread: 0.001*i as f64, 
-                    bids: [Level { exchange: String::from("best"), 
-                    price: 0.2, amount: 0.4 } ].to_vec(), 
-                    asks: [].to_vec()
-                }));
-            
         };
         Ok(Response::new(orderbook::Empty {}))
     }

@@ -110,10 +110,10 @@ async fn client() -> Result<(), Box<dyn std::error::Error>> {
     let request = tonic::Request::new( schema_specific::orderbook::Empty {});
     let mut stream = channel.book_summary(request).await?.into_inner();
     // channel.book_summary_feed(stream).await;
-    let point_count = 9;
+    let point_count = 72;
     
-    for i in 7..=point_count {
-        let mut points = vec![];
+    let mut points = vec![];
+    for i in 13..=point_count {
         points.push(
             Summary 
                 { 
@@ -124,11 +124,11 @@ async fn client() -> Result<(), Box<dyn std::error::Error>> {
                 }
         );
         println!("Traversing {} points", points.len());
-        let request = tonic::Request::new(futures::stream::iter(points));
 
-        channel.book_summary_feed(request).await;
     }
+    let request = tonic::Request::new(futures::stream::iter(points).take(2));
 
+    channel.book_summary_feed(request).await;
     println!("RESPONSE={:?}", stream);
     while let Ok(item) = stream.message().await {
         match item {
