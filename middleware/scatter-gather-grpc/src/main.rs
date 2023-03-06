@@ -39,11 +39,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
         let _ = client_buf(out_channel).await; 
     } );
-    let _client = tokio::spawn( async { let _ = client().await; } );
-    let _client = tokio::spawn( async { let _ = client().await; } );
-    let _client = tokio::spawn( async { let _ = client().await; } );
+    let _client = tokio::spawn( async { let _ = client(1).await; } );
+    let _client = tokio::spawn( async { let _ = client(2).await; } );
+    let _client = tokio::spawn( async { let _ = client(3).await; } );
     let _streamer = tokio::spawn(async move {
-        for i in 66..=68 {
+        for i in 66..=168 {
             println!("Sending message from streamer.");
             in_channel.send(
                 Ok(                
@@ -79,7 +79,7 @@ async fn client_buf(mut buffer: mpsc::Receiver<Result<Summary, Status>>) -> Resu
     Ok(())
 }
 
-async fn client() -> Result<(), Box<dyn std::error::Error>> {
+async fn client(id: i32) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Client (Feed).");
 
     let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
@@ -89,7 +89,7 @@ async fn client() -> Result<(), Box<dyn std::error::Error>> {
     println!("RESPONSE={:?}", stream);
     while let Ok(item) = stream.message().await {
         match item {
-            Some( a) => println!("\tClient Item: {:?}", a),
+            Some( a) => println!("\tClient {:?} Item: {:?}", id, a),
             None => { println!("None") }
         }
     }
