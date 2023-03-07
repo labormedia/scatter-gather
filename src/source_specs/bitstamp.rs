@@ -38,7 +38,7 @@ impl BitstampDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-    fn helper(&self, input: String) -> Self {
+    pub fn helper(input: String) -> Self {
         println!("Input: {:?}", input);
         match serde_json::from_str(&input){
             Ok(a) => {
@@ -68,8 +68,8 @@ impl Interceptor for BitstampDepthInterceptor {
     type Input = String;
     type Output = BitstampDepthInterceptor;
 
-    fn intercept(&mut self, input: Self::Input) -> BitstampDepthInterceptor {
-        let a = Self::helper(&self, input);
+    fn intercept(input: Self::Input) -> BitstampDepthInterceptor {
+        let a = Self::helper(input);
         a
     }
 }

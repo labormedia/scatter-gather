@@ -48,7 +48,7 @@ impl<T: Send + 'static + Default> Interceptor for Box<dyn Depth<T>> {
         type Input = String;
         type Output = T;
 
-        fn intercept(&mut self, input: Self::Input) -> Self::Output {
+        fn intercept(input: Self::Input) -> Self::Output {
             T::default()
         }
 }

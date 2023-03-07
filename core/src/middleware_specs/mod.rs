@@ -14,7 +14,7 @@ pub trait Interceptor: Send {
     type Input;
     type Output;
 
-    fn intercept(&mut self, input: Self::Input) -> Self::Output;
+    fn intercept(input: Self::Input) -> Self::Output;
 }
 
 #[derive(Debug)]

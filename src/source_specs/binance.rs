@@ -55,7 +55,7 @@ impl BinanceDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-    fn helper(&self, input: String) -> Self {
+    pub fn helper(input: String) -> Self {
         println!("Input: {:?}", input);
         serde_json::from_str(&input).expect("Parsing error.")
     }
@@ -76,8 +76,8 @@ impl Interceptor for BinanceDepthInterceptor {
     type Input = String;
     type Output = BinanceDepthInterceptor;
 
-    fn intercept(&mut self, input: Self::Input) -> BinanceDepthInterceptor {
-        BinanceDepthInterceptor::helper(&self, input)
+    fn intercept(input: Self::Input) -> BinanceDepthInterceptor {
+        BinanceDepthInterceptor::helper(input)
     }
 }
 
