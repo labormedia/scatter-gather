@@ -110,12 +110,12 @@ impl<'b, TInterceptor: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt:
     }
 
     fn poll(
-            &mut self,
+            mut self,
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<Self::OutEvent> 
     {
         loop {
-            match &self.read.poll_next_unpin(cx) {
+            match self.read.poll_next_unpin(cx) {
                 Poll::Ready(None) => {},
                 Poll::Ready(a) => {
                     println!("Read message: {:?}", a);

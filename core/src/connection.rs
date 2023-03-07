@@ -46,7 +46,7 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     // type Error: error::Error + fmt::Debug + Send + 'static;
 
     fn poll(
-        &mut self,
+        self,
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent>;
 
@@ -59,7 +59,7 @@ impl<'b, THandler:fmt::Debug + Send + Sync + for <'a> ConnectionHandler<'a> > Co
     type OutEvent = ConnectionHandlerOutEvent<THandler>;
 
     fn poll(
-            &mut self,
+            self,
             cx: &mut Context<'_>,
         ) -> Poll<Self::OutEvent> 
     {

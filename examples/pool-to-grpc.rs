@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     grpc_pool.connect();
     grpc_pool.poll(&mut Context::from_waker(futures::task::noop_waker_ref()));
 
-    grpc_pool.intercept_stream().await;
+    // grpc_pool.intercept_stream().await;
     // let pool_config2 = PoolConfig {
     //     task_event_buffer_size: 1
     // };

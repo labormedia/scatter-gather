@@ -1,9 +1,11 @@
 
 use scatter_gather_core::{
     connection::{
+        Connection,
+        ConnectionId,
         ConnectionHandler,
         ConnectionHandlerInEvent,
-        ConnectionHandlerOutEvent
+        ConnectionHandlerOutEvent,
     },
     middleware_specs::{
         ServerConfig,
@@ -121,22 +123,32 @@ impl fmt::Display for ConnectionHandlerError {
 
 impl<'b, T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'b> for GrpcMiddleware<T> {
     type InEvent = ConnectionHandlerInEvent<Result<Summary, Status>>;
-    type OutEvent = ConnectionHandlerOutEvent<Result<Summary, Status>>;
+    type OutEvent = ConnectionHandlerOutEvent<Connection<GrpcMiddleware<T>>>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         #[cfg(debug_assertions)]
         println!("Injecting event on GrpcMiddleware. {:?}", event);
     }
-    fn eject_event(& mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Result<Summary, Status>> {
+    fn eject_event(& mut self, event: Self::OutEvent) -> Self::OutEvent {
         event
     }
 
     fn poll(
-        &mut self,
+        self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
-        Poll::Pending
+        let connection = Connection {
+            id : ConnectionId::new(0),
+            source_type: ServerConfig {
+                url: self.config.url.clone(),
+                prefix: self.config.prefix.clone(),
+                init_handle: self.config.init_handle.clone(),
+                handler: self
+            }
+        };
+        Poll::Ready(Self::OutEvent::ConnectionEvent(connection))
+        // Poll::Pending
     }
 }

@@ -30,7 +30,7 @@ impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
     type OutEvent = ConnectionHandlerOutEvent<Message>;
 
     fn poll(
-        &mut self,
+        mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
@@ -110,7 +110,7 @@ impl ConnectionHandler<'_> for Interceptors {
     type OutEvent = Self;
 
     fn poll(
-        &mut self,
+        self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {

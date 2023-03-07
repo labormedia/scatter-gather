@@ -81,7 +81,7 @@ impl ConnectionHandler<'_> for BitstampDepthInterceptor {
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
-        &mut self,
+        mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent>
     {

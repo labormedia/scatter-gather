@@ -194,34 +194,23 @@ U: Send + 'static + std::fmt::Debug
                     unreachable!("unreachable.");
                     // panic!("Code unreacheable.")
                 },
-                Poll::Ready(Some(mut value_I)) => { 
+                Poll::Ready(Some(value_I)) => { 
                     #[cfg(debug_assertions)]
                     println!("Ready I : {:?} \n Type : {:?}", value_I, type_of(&value_I));
+                    
                     match value_I.poll(cx) 
                     {
                         Poll::Ready(event) => {
                             #[cfg(debug_assertions)]
-                            println!("Ready II : {:?}", event);
-                            let invariant = Box::pin(Connection {
-                                id : ConnectionId::new(0),
-                                source_type: ServerConfig {
-                                    url: String::from(""),
-                                    prefix: String::from(""),
-                                    init_handle: None,
-                                    handler: value_I
-                                }
-                            });
+                            println!("Ready value_I.poll : {:?} \n Type : {:?}", event, type_of(&event));
+
                             Poll::Ready(
-                                PoolEvent::ConnectionEvent(
-                                    PoolConnection { 
-                                        conn: invariant, 
-                                        event: ConnectionHandlerInEvent::Connect
-                                    }
-                            ))
+                                PoolEvent::Custom
+                            )
                         },
                         Poll::Pending => {
-                            #[cfg(debug_assertions)]
-                            println!("Pending I : {:?}", value_I);
+                            // #[cfg(debug_assertions)]
+                            // println!("Pending I : {:?}", value_I);
                             Poll::Pending
                         }
                     }
