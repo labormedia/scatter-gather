@@ -64,12 +64,15 @@ const ADDRESS: &str = "http://[::1]:54001";
 #[derive(Debug)]
 pub struct GrpcMiddleware<TInterceptor: for <'a> ConnectionHandler<'a>> {
     pub config: ServerConfig<TInterceptor>,
+    pub write: mpsc::Sender<Result<Summary, Status>>,
+    read: mpsc::Receiver<Result<Summary, Status>>
 }
 
 
 impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> {
 
     pub async fn new(config: ServerConfig<TInterceptor>) -> GrpcMiddleware<TInterceptor> {
+        let (write, read): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = schema_specific::OrderBook::new(in_broadcast_clone);
@@ -77,18 +80,20 @@ impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> 
         schema_specific::server(ADDRESS, channels, rt).await.expect("Couldn't start server.");
         Self {
             config,
+            write,
+            read
         }
 
     }
 
-    async fn client_buf(mut buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
+    async fn client_buf(&mut self, mut _buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Starting Client (Buffer).");
         // Creates a new client for accesing the gRPC service.
         let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
             .await?;
     
-        while let Some(Ok(msg)) = buffer.recv().await {
+        while let Some(Ok(msg)) = self.read.recv().await {
             #[cfg(debug_assertions)]
             println!("Received while in client_buf: {:?}", msg);
             let input = futures::stream::iter([msg]).take(1);
@@ -116,14 +121,14 @@ impl fmt::Display for ConnectionHandlerError {
 // Implement ConnectionHandler for the middleware.
 
 impl<'b, T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'b> for GrpcMiddleware<T> {
-    type InEvent = ConnectionHandlerInEvent<Result<Summary,Status>>;
-    type OutEvent = ConnectionHandlerOutEvent<T>;
+    type InEvent = ConnectionHandlerInEvent<Result<Summary, Status>>;
+    type OutEvent = ConnectionHandlerOutEvent<Result<Summary, Status>>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         #[cfg(debug_assertions)]
         println!("Injecting event on GrpcMiddleware. {:?}", event);
     }
-    fn eject_event(& mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<T> {
+    fn eject_event(& mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Result<Summary, Status>> {
         event
     }
 

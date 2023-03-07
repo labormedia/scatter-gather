@@ -118,7 +118,10 @@ mod tests {
         orderbook::Level, 
     };
     use tokio_stream::StreamExt;
-    use tokio::sync::broadcast;
+    use tokio::{
+        sync::broadcast,
+        runtime::Runtime
+    };
     use tonic::Status;
 
     #[tokio::test]
@@ -127,8 +130,8 @@ mod tests {
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = OrderBook::new(in_broadcast_clone);
-        
-        schema_specific::server(ADDRESS, channels).await.unwrap();
+        let rt = Runtime::new()?;
+        schema_specific::server(ADDRESS, channels, rt).await.unwrap();
         let _client_buf = tokio::spawn( async move {
             // let mut mpsc_receiver_stream = ReceiverStream::new(out_channel);
             let _ = client_buf_test().await; 

@@ -59,6 +59,7 @@ impl BinanceDepthInterceptor {
         println!("Input: {:?}", input);
         serde_json::from_str(&input).expect("Parsing error.")
     }
+    fn exchange() -> String { String::from("Binance") }
 }
 
 impl Depth<Level> for BinanceDepthInterceptor {

@@ -14,7 +14,7 @@ use tokio_tungstenite::{
 use tokio::net::TcpStream;
 use futures::{
     StreamExt, SinkExt,
-    stream::{SplitSink, SplitStream},
+    stream::{SplitSink, SplitStream, Map},
     task::Poll,
 };
 use std::fmt;
@@ -36,8 +36,14 @@ impl<TInterceptor: for<'a> ConnectionHandler<'a>> WebSocketsMiddleware<TIntercep
         let (mut write,read) = Self::spin_up(&config).await;
         if let Some(init_handle) = &config.init_handle {
             match write.send(Message::Text(init_handle.to_string())).await {
-                Ok(m) => println!("Connection Response : {:?}", m),
-                Err(e) => println!("Initialization Error: {:?}", e)
+                Ok(m) => {
+                    #[cfg(debug_assertions)]
+                    println!("Connection Response : {:?}", m)
+                },
+                Err(e) => {
+                    #[cfg(debug_assertions)]
+                    println!("Initialization Error: {:?}", e)
+                }
             };
         };
         Self {
@@ -57,9 +63,16 @@ impl<TInterceptor: for<'a> ConnectionHandler<'a>> WebSocketsMiddleware<TIntercep
 
     pub async fn send(&mut self, msg: String) {
         match self.write.send(Message::Text(msg)).await {
-            Ok(m) => println!("Response {:?}", m),
-            Err(e) => println!("Error: {:?}", e)
+            Ok(m) => {
+                #[cfg(debug_assertions)]
+                println!("Response {:?}", m)
+            },
+            Err(e) => {
+                #[cfg(debug_assertions)]
+                println!("Error: {:?}", e)
+            }
         };
+        #[cfg(debug_assertions)]
         println!("message sent.");
     }
 
@@ -88,6 +101,7 @@ impl<'b, TInterceptor: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt:
     type OutEvent = ConnectionHandlerOutEvent<TInterceptor>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
+        #[cfg(debug_assertions)]
         println!("Inject debug: InEvent: {:?}", event);
     }
 

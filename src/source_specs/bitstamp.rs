@@ -51,6 +51,7 @@ impl BitstampDepthInterceptor {
             }
         }
     }
+    pub fn exchange(&self) -> String { String::from("Bitstamp") }
 }
 
 impl Depth<Level> for BitstampDepthInterceptor {
