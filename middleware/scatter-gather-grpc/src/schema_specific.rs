@@ -127,12 +127,13 @@ struct Extended {
     intercepted_data: String,
 }
 
-pub async fn server(address: &str, inner: OrderBook, rt: Runtime) -> Result<Runtime, Box<dyn std::error::Error>> {
+pub fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(debug_assertions)]
     println!("Starting service.");
     let service = OrderbookAggregatorServer::new(inner);
-    let b = rt.spawn(async {
+    // let rt = Runtime::new()?;
+    let _b = tokio::spawn(async {
         #[cfg(debug_assertions)]
         println!("Building server.");
         Server::builder().add_service(service).serve("[::1]:54001".parse().unwrap()).await.unwrap();
@@ -140,5 +141,5 @@ pub async fn server(address: &str, inner: OrderBook, rt: Runtime) -> Result<Runt
         println!("Server builder passed");
     });
     
-    Ok(rt)
+    Ok(())
 }

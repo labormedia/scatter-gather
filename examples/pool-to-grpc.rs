@@ -11,6 +11,7 @@ use scatter_gather_core::{
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather_grpc::{
+    GrpcMiddleware,
     schema_specific::{
         self, 
         OrderBook, 
@@ -21,11 +22,18 @@ use scatter_gather_grpc::{
     }
 };
 use scatter_gather::source_specs::{
+    Depth,
+    Level as DepthLevel,
     Interceptors,
     binance::BinanceDepthInterceptor,
     bitstamp::BitstampDepthInterceptor,
 };
-use std::any::type_name;
+use std::{
+    pin::Pin,
+    any::type_name,
+    task::Context
+};
+use tokio::runtime::Runtime;
 
 fn type_of<T>(_: T) -> &'static str {
     type_name::<T>()
@@ -50,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         handler: bitstamp_interceptor
     };
 
-    let binance = WebSocketsMiddleware::new(config_binance).await;
+    let binance = WebSocketsMiddleware::new(config_binance).await ;
     let bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
 
     let binance_intercepted = 
@@ -64,20 +72,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 
+    let grpc_config: ServerConfig<Interceptors> = ServerConfig { 
+        url: String::from("[::1]:54001"), 
+        prefix: String::from("http://"), 
+        init_handle: None, 
+        handler: Interceptors::Depth
+    };
+
+
+    let grpc = GrpcMiddleware::new(grpc_config);
+
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
     };
-    let mut ws_pool: Pool<WebSocketsMiddleware<Interceptors>,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+    let mut grpc_pool: Pool<GrpcMiddleware<Interceptors>,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
 
-    ws_pool.collect_streams(Box::pin(binance_intercepted));
-    ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
-    loop {
-        match ws_pool.next().await {
-            None => { },
-            Some(a) => println!("Accesing Pool: {:?}", a),
-        }
-    };
+    grpc_pool.inject_connection(grpc);
+
+
+    grpc_pool.collect_streams(Box::pin(binance_intercepted));
+    grpc_pool.collect_streams(Box::pin(bitstamp_intercepted));
+
+    // grpc_pool.intercept_stream().await;
+    grpc_pool.connect();
+    grpc_pool.poll(&mut Context::from_waker(futures::task::noop_waker_ref()));
+
+    grpc_pool.intercept_stream().await;
+    // let pool_config2 = PoolConfig {
+    //     task_event_buffer_size: 1
+    // };
+    // let mut grpc_pool: Pool<GrpcMiddleware<Interceptors>, Interceptors> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
+
+    // grpc_pool.collect_streams(Box::pin(ws_pool.local_streams));
+
+
     Ok(())
     
 }

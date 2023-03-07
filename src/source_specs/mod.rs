@@ -101,7 +101,8 @@ pub mod helpers {
 #[derive(Debug)]
 pub enum Interceptors {
     Binance(BinanceDepthInterceptor),
-    Bitstamp(BitstampDepthInterceptor)
+    Bitstamp(BitstampDepthInterceptor),
+    Depth
 }
 
 impl ConnectionHandler<'_> for Interceptors {
@@ -132,7 +133,8 @@ impl Interceptor for Interceptors {
     fn helper(input: Self::Input) -> Self::Output {
         match input {
             Self::Binance(binance) => Self::Binance(binance),
-            Self::Bitstamp(bitstamp) => Self::Bitstamp(bitstamp)
+            Self::Bitstamp(bitstamp) => Self::Bitstamp(bitstamp),
+            Self::Depth => Self::Depth
         }
     }
 

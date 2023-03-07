@@ -17,6 +17,7 @@ use futures::{
     stream::{SplitSink, SplitStream, Map},
     task::Poll,
 };
+use std::borrow::BorrowMut;
 use std::fmt;
 
 
@@ -33,7 +34,14 @@ pub struct WebSocketsMiddleware<TInterceptor: for<'a> ConnectionHandler<'a>> {
 // Implement custom fucntionality for the middleware.
 impl<TInterceptor: for<'a> ConnectionHandler<'a>> WebSocketsMiddleware<TInterceptor> {
     pub async fn new(config: ServerConfig<TInterceptor>) -> WebSocketsMiddleware<TInterceptor> {
-        let (mut write,read) = Self::spin_up(&config).await;
+        Self::spin_up(config).await
+    }
+    
+    async fn spin_up(config: ServerConfig<TInterceptor>) -> 
+        Self
+    {
+        let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
+        let (mut write,read) = ws_stream.split();
         if let Some(init_handle) = &config.init_handle {
             match write.send(Message::Text(init_handle.to_string())).await {
                 Ok(m) => {
@@ -51,14 +59,6 @@ impl<TInterceptor: for<'a> ConnectionHandler<'a>> WebSocketsMiddleware<TIntercep
             write,
             read
         }
-    }
-    
-    async fn spin_up(config: &ServerConfig<TInterceptor>) -> (
-        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, 
-        SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
-    ) {
-        let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
-        ws_stream.split()
     }
 
     pub async fn send(&mut self, msg: String) {

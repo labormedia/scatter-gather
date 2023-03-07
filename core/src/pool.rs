@@ -134,15 +134,15 @@ U: Send + 'static + std::fmt::Debug
             self.local_spawns.push(task);
         }
     }
-    pub fn inject_connection(&self, conn: impl Future<Output = T> + Send + 'static) {
-        self.local_spawns.push(Box::pin(conn));
+    pub fn inject_connection(&mut self, conn: impl Future<Output = T> + Send + 'static) {
+        self.spawn(Box::pin(conn));
     }
 
     pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
         self.local_streams.push(stream);
     }
 
-    pub fn connect(self) {
+    pub fn connect(&mut self) {
         let binding = self.poll(&mut Context::from_waker(futures::task::noop_waker_ref()));
         let value = match binding
         {
@@ -178,7 +178,7 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.next()
     }
 
-    pub fn poll<'b>(mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> 
+    pub fn poll<'b>(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> 
     {
         loop {
             break match self.local_spawns.poll_next_unpin(cx) {
@@ -190,8 +190,9 @@ U: Send + 'static + std::fmt::Debug
                 },
                 Poll::Ready(None) => {
                     #[cfg(debug_assertions)]
+                    return Poll::Pending;
                     unreachable!("unreachable.");
-                    panic!("Code unreacheable.")
+                    // panic!("Code unreacheable.")
                 },
                 Poll::Ready(Some(mut value_I)) => { 
                     #[cfg(debug_assertions)]
