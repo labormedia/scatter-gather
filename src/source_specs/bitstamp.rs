@@ -38,19 +38,6 @@ impl BitstampDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn helper(input: String) -> Self {
-        println!("Input: {:?}", input);
-        match serde_json::from_str(&input){
-            Ok(a) => {
-                println!("Input: {:?}", a);
-                a
-            },
-            Err(e) => {
-                println!("Dropping failed parsing: {:?}", e);
-                Self::default()
-            }
-        }
-    }
     pub fn exchange(&self) -> String { String::from("Bitstamp") }
 }
 
@@ -67,7 +54,19 @@ impl Depth<Level> for BitstampDepthInterceptor {
 impl Interceptor for BitstampDepthInterceptor {
     type Input = String;
     type Output = BitstampDepthInterceptor;
-
+    fn helper(input: String) -> Self {
+        println!("Input: {:?}", input);
+        match serde_json::from_str(&input){
+            Ok(a) => {
+                println!("Input: {:?}", a);
+                a
+            },
+            Err(e) => {
+                println!("Dropping failed parsing: {:?}", e);
+                Self::default()
+            }
+        }
+    }
     fn intercept(input: Self::Input) -> BitstampDepthInterceptor {
         let a = Self::helper(input);
         a

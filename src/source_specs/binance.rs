@@ -36,8 +36,8 @@ pub struct BinanceDepthInterceptor {
     e: String,
     E: i64,
     s: String,
-    U: u32,
-    u: u32,
+    U: i64,
+    u: i64,
     b: Vec<Level>,
     a: Vec<Level>
 }
@@ -55,10 +55,6 @@ impl BinanceDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn helper(input: String) -> Self {
-        println!("Input: {:?}", input);
-        serde_json::from_str(&input).expect("Parsing error.")
-    }
     fn exchange() -> String { String::from("Binance") }
 }
 
@@ -75,9 +71,12 @@ impl Depth<Level> for BinanceDepthInterceptor {
 impl Interceptor for BinanceDepthInterceptor {
     type Input = String;
     type Output = BinanceDepthInterceptor;
-
-    fn intercept(input: Self::Input) -> BinanceDepthInterceptor {
-        BinanceDepthInterceptor::helper(input)
+    fn helper(input: Self::Input) -> Self::Output {
+        println!("Input: {:?}", input);
+        serde_json::from_str(&input).expect("Parsing error.")
+    }
+    fn intercept(input: Self::Input) -> Self::Output {
+        Self::Output::helper(input)
     }
 }
 

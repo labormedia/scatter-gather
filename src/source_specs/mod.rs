@@ -16,7 +16,9 @@ use tungstenite::Message;
 use futures::{
     task::Poll
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::BitAnd};
+
+use self::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 
 pub trait Depth<T>: Send + Sync {
     // fn helper(&self, input: String) -> Self;
@@ -44,14 +46,16 @@ impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
     }
 }
 
-impl<T: Send + 'static + Default> Interceptor for Box<dyn Depth<T>> {
-        type Input = String;
-        type Output = T;
-
-        fn intercept(input: Self::Input) -> Self::Output {
-            T::default()
-        }
-}
+// impl<T: Send + 'static + Default> Interceptor for Box<dyn Depth<T>> {
+//         type Input = String;
+//         type Output = T;
+//         fn helper(input: String) -> Self {
+//             Self
+//         }
+//         fn intercept(input: Self::Input) -> Self::Output {
+//             T::default()
+//         }
+// }
 
 impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -104,7 +108,45 @@ pub mod helpers {
     }
 }
 
+#[derive(Debug)]
 pub enum Interceptors {
     Binance(binance::BinanceDepthInterceptor),
     Bitstamp(bitstamp::BitstampDepthInterceptor)
+}
+
+impl ConnectionHandler<'_> for Interceptors {
+    type InEvent = String;
+    type OutEvent = Self;
+
+    fn poll(
+        &mut self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::OutEvent> 
+    {
+        // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
+        Poll::Pending
+    }
+    fn inject_event(&mut self, event: Self::InEvent) {
+        println!("Hello Future! InEvent: {:?}", event);
+    }
+    fn eject_event(&mut self, event: Self::OutEvent) -> Self {
+        println!("Hello Future! OutEvent: {:?}", event);
+        event
+    }
+}
+
+impl Interceptor for Interceptors {
+    type Input = Self;
+    type Output = Self;
+
+    fn helper(input: Self::Input) -> Self::Output {
+        match input {
+            Self::Binance(binance) => Self::Binance(binance),
+            Self::Bitstamp(bitstamp) => Self::Bitstamp(bitstamp)
+        }
+    }
+
+    fn intercept(input: Self::Input) -> Self::Output {
+        Self::helper(input)
+    }
 }

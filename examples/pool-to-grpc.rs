@@ -21,6 +21,7 @@ use scatter_gather_grpc::{
     }
 };
 use scatter_gather::source_specs::{
+    Interceptors,
     binance::BinanceDepthInterceptor,
     bitstamp::BitstampDepthInterceptor, self,
 };
@@ -57,33 +58,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         binance
             .read
             .map(|result| result.unwrap().into_text().unwrap())
-            .map(|text| BinanceDepthInterceptor::intercept(text));
+            .map(|text| Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) );
     let bitstamp_intercepted =
         bitstamp
             .read
             .map(|result| result.unwrap().into_text().unwrap())
-            .map(|text| BitstampDepthInterceptor::intercept(text));
+            .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
     };
-    let mut desired_pool: Pool<WebSocketsMiddleware<BinanceDepthInterceptor>,BinanceDepthInterceptor> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+    let mut desired_pool: Pool<WebSocketsMiddleware<Interceptors>,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
 
     desired_pool.collect_streams(Box::pin(binance_intercepted));
-    // desired_pool.collect_streams(Box::pin(bitstamp_intercepted));
+    desired_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
-    // loop {
-        // match desired_pool.next().await {
-        //     None => { },
-        //     Some(a) => println!("Accesing Pool: {:?}", a),
-        //     _ => { return Ok(())}
-        // }
-        // match binance_pool.next().await {
-        //     None => { },
-        //     Some(Ok(Message::Text(a))) => println!("Accesing Binance: {:?}", a),
-        //     _ => {}
-        // }
-    // };
+    loop {
+        match desired_pool.next().await {
+            None => { },
+            Some(a) => println!("Accesing Pool: {:?}", a),
+        }
+    };
     Ok(())
     
 }

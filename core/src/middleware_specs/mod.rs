@@ -14,6 +14,7 @@ pub trait Interceptor: Send {
     type Input;
     type Output;
 
+    fn helper(input: Self::Input) -> Self::Output;
     fn intercept(input: Self::Input) -> Self::Output;
 }
 

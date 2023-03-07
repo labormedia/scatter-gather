@@ -57,11 +57,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     // new_pool.inject_connection(connection2);
     bitstamp_pool.collect_streams(Box::pin(connection2.await.get_stream()));
+    binance_pool.collect_streams(Box::pin(connection1.await.get_stream()));
     // new_pool.intercept_stream().await;
-    while let Some(Ok(Message::Text(a))) = bitstamp_pool.next().await {
-        // let b = ;
-        println!("accesing: {:?}", a)
-    };
+    // while let Some(Ok(Message::Text(a))) = bitstamp_pool.next().await {
+    //     // let b = ;
+    //     println!("accesing: {:?}", a)
+    // };
     loop {
         match bitstamp_pool.next().await {
             None => { },
