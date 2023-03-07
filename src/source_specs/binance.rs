@@ -72,8 +72,20 @@ impl Interceptor for BinanceDepthInterceptor {
     type Input = String;
     type Output = BinanceDepthInterceptor;
     fn helper(input: Self::Input) -> Self::Output {
+        #[cfg(debug_assertions)]
         println!("Input: {:?}", input);
-        serde_json::from_str(&input).expect("Parsing error.")
+        match serde_json::from_str(&input){
+            Ok(a) => {
+                #[cfg(debug_assertions)]
+                println!("Input: {:?}", a);
+                a
+            },
+            Err(e) => {
+                #[cfg(debug_assertions)]
+                println!("Dropping failed parsing: {:?}", e);
+                Self::default()
+            }
+        }
     }
     fn intercept(input: Self::Input) -> Self::Output {
         Self::Output::helper(input)
@@ -93,9 +105,11 @@ impl ConnectionHandler<'_> for BinanceDepthInterceptor {
         Poll::Pending
     }
     fn inject_event(&mut self, event: Self::InEvent) {
+        #[cfg(debug_assertions)]
         println!("Hello Future! InEvent: {:?}", event);
     }
     fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Message> {
+        #[cfg(debug_assertions)]
         println!("Hello Future! OutEvent: {:?}", event);
         event
     }

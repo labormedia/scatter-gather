@@ -23,9 +23,8 @@ use scatter_gather_grpc::{
 use scatter_gather::source_specs::{
     Interceptors,
     binance::BinanceDepthInterceptor,
-    bitstamp::BitstampDepthInterceptor, self,
+    bitstamp::BitstampDepthInterceptor,
 };
-use tungstenite::Message;
 use std::any::type_name;
 
 fn type_of<T>(_: T) -> &'static str {
@@ -51,8 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         handler: bitstamp_interceptor
     };
 
-    let mut binance = WebSocketsMiddleware::new(config_binance).await;
-    let mut bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
+    let binance = WebSocketsMiddleware::new(config_binance).await;
+    let bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
 
     let binance_intercepted = 
         binance
@@ -68,13 +67,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
     };
-    let mut desired_pool: Pool<WebSocketsMiddleware<Interceptors>,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+    let mut ws_pool: Pool<WebSocketsMiddleware<Interceptors>,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
 
-    desired_pool.collect_streams(Box::pin(binance_intercepted));
-    desired_pool.collect_streams(Box::pin(bitstamp_intercepted));
+    ws_pool.collect_streams(Box::pin(binance_intercepted));
+    ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
     loop {
-        match desired_pool.next().await {
+        match ws_pool.next().await {
             None => { },
             Some(a) => println!("Accesing Pool: {:?}", a),
         }

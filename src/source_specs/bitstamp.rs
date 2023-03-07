@@ -55,13 +55,16 @@ impl Interceptor for BitstampDepthInterceptor {
     type Input = String;
     type Output = BitstampDepthInterceptor;
     fn helper(input: String) -> Self {
+        #[cfg(debug_assertions)]
         println!("Input: {:?}", input);
         match serde_json::from_str(&input){
             Ok(a) => {
+                #[cfg(debug_assertions)]
                 println!("Input: {:?}", a);
                 a
             },
             Err(e) => {
+                #[cfg(debug_assertions)]
                 println!("Dropping failed parsing: {:?}", e);
                 Self::default()
             }

@@ -191,6 +191,7 @@ U: Send + 'static + std::fmt::Debug
                 Poll::Ready(None) => {
                     #[cfg(debug_assertions)]
                     unreachable!("unreachable.");
+                    panic!("Code unreacheable.")
                 },
                 Poll::Ready(Some(mut value_I)) => { 
                     #[cfg(debug_assertions)]

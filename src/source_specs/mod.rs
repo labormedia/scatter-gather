@@ -16,12 +16,11 @@ use tungstenite::Message;
 use futures::{
     task::Poll
 };
-use std::{fmt::Debug, ops::BitAnd};
+use std::fmt::Debug;
 
 use self::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 
 pub trait Depth<T>: Send + Sync {
-    // fn helper(&self, input: String) -> Self;
     fn get_bids(&self) -> &Vec<T>;
     fn get_asks(&self) -> &Vec<T>;
 }
@@ -46,17 +45,6 @@ impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
     }
 }
 
-// impl<T: Send + 'static + Default> Interceptor for Box<dyn Depth<T>> {
-//         type Input = String;
-//         type Output = T;
-//         fn helper(input: String) -> Self {
-//             Self
-//         }
-//         fn intercept(input: Self::Input) -> Self::Output {
-//             T::default()
-//         }
-// }
-
 impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Depth: {:?}", self)
@@ -66,9 +54,9 @@ impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct Level {
     #[serde(deserialize_with = "helpers::quantity_from_str")]
-    left: f32,
+    left: f64,
     #[serde(deserialize_with = "helpers::quantity_from_str")]
-    right: f32
+    right: f64
 }
 
 pub mod helpers {
@@ -77,12 +65,12 @@ pub mod helpers {
         Deserializer,
         de
     };
-    pub fn quantity_from_str<'a, D>(input: D) -> Result<f32, D::Error>
+    pub fn quantity_from_str<'a, D>(input: D) -> Result<f64, D::Error>
     where
         D: Deserializer<'a>,
     {
         let str_val = String::deserialize(input)?;
-        str_val.parse::<f32>().map_err(de::Error::custom)
+        str_val.parse::<f64>().map_err(de::Error::custom)
     }
     pub fn check_json<'a, D, T>(input: D, source_type: T) -> Result<String, D::Error>
     where
@@ -95,12 +83,14 @@ pub mod helpers {
     where
         D: Deserializer<'a>
     {
-        let _: f32 = match serde_json::from_str(input){
+        let _: f64 = match serde_json::from_str(input){
             Ok(a) => {
+                #[cfg(debug_assertions)]
                 println!("Input: {:?}", a);
                 a
             },
             Err(e) => {
+                #[cfg(debug_assertions)]
                 println!("Dropping failed parsing: {:?}", e);
                 0.0
             }
@@ -110,8 +100,8 @@ pub mod helpers {
 
 #[derive(Debug)]
 pub enum Interceptors {
-    Binance(binance::BinanceDepthInterceptor),
-    Bitstamp(bitstamp::BitstampDepthInterceptor)
+    Binance(BinanceDepthInterceptor),
+    Bitstamp(BitstampDepthInterceptor)
 }
 
 impl ConnectionHandler<'_> for Interceptors {
