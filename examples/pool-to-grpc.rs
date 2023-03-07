@@ -1,6 +1,7 @@
+use futures::StreamExt;
 use scatter_gather_core::{
     middleware_specs::{
-        ServerConfig,
+        ServerConfig, Interceptor,
     },
     pool::{
         Pool,
@@ -24,7 +25,7 @@ use scatter_gather::source_specs::{
     bitstamp::BitstampDepthInterceptor,
 };
 use tungstenite::Message;
-use std::{any::type_name};
+use std::any::type_name;
 
 fn type_of<T>(_: T) -> &'static str {
     type_name::<T>()
@@ -49,37 +50,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         handler: bitstamp_interceptor
     };
 
-    let connection1 = WebSocketsMiddleware::new(config_binance);
-    let connection2 = WebSocketsMiddleware::new(config_bitstamp);
+    let mut binance = WebSocketsMiddleware::new(config_binance).await;
+    let mut bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
+
+    let binance_intercepted = 
+        binance
+            .read
+            .map(|result| result.unwrap().into_text().unwrap())
+            .map(|text| binance.config.handler.intercept(text));
+    let bitstamp_intercepted =
+        bitstamp
+            .read
+            .map(|result| result.unwrap().into_text().unwrap())
+            .map(|text| bitstamp.config.handler.intercept(text));
 
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
     };
-    // let pool_config2 = PoolConfig {
-    //     task_event_buffer_size: 1
-    // };
-    // type Message = (Option<Result<tungstenite::protocol::message::Message, tungstenite::error::Error>>, tokio_tungstenite::WebSocketStream<tokio_tungstenite::stream::MaybeTlsStream<tokio::net::TcpStream>>);
-    // let mut new_pool: Pool<WebSocketsMiddleware<_> = Pool::new(0, pool_config, PoolConnectionLimits::default());
+    let mut desired_pool: Pool<WebSocketsMiddleware<BinanceDepthInterceptor>,BinanceDepthInterceptor> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
 
-    let mut desired_pool: Pool<WebSocketsMiddleware<BitstampDepthInterceptor>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
-    // let mut binance_pool: Pool<WebSocketsMiddleware<BinanceDepthInterceptor>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
+    // desired_pool.collect_streams(Box::pin(binance_intercepted));
+    // desired_pool.collect_streams(Box::pin(connection1.await.get_stream()));
 
-    // new_pool.inject_connection(connection2);
-    desired_pool.collect_streams(Box::pin(connection2.await.get_stream()));
-    desired_pool.collect_streams(Box::pin(connection1.await.get_stream()));
-    // new_pool.intercept_stream().await;
-
-    loop {
-        match desired_pool.next().await {
-            None => { },
-            Some(Ok(Message::Text(a))) => println!("Accesing Pool: {:?}", a),
-            _ => { return Ok(())}
-        }
+    // loop {
+        // match desired_pool.next().await {
+        //     None => { },
+        //     Some(a) => println!("Accesing Pool: {:?}", a),
+        //     _ => { return Ok(())}
+        // }
         // match binance_pool.next().await {
         //     None => { },
         //     Some(Ok(Message::Text(a))) => println!("Accesing Binance: {:?}", a),
         //     _ => {}
         // }
-    };
+    // };
+    Ok(())
     
 }
