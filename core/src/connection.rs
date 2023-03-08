@@ -29,7 +29,7 @@ impl ConnectionId {
 pub enum ConnectionHandlerInEvent {
     Connect,
     Disconnect,
-    Intercept()
+    Intercept
 }
 
 #[derive(Debug)]

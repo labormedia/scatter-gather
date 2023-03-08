@@ -147,6 +147,8 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
         println!("Injecting event on GrpcMiddleware. {:?}", event);
     }
     fn eject_event(& mut self, event: Self::OutEvent) -> Self::OutEvent {
+        #[cfg(debug_assertions)]
+        println!("Ejecting event on GrpcMiddleware. {:?}", event);
         event
     }
 
@@ -164,10 +166,10 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
                 init_handle: self.config.init_handle.clone(),
             },
         };
-        // let event = self.eject_event(Self::OutEvent::ConnectionEvent(connection));
-        // self.inject_event(ConnectionHandlerInEvent::Intercept(&connection));
+        let event = self.eject_event(Self::OutEvent::ConnectionEvent(connection));
+        // self.inject_event(ConnectionHandlerInEvent::Intercept);
         // connection.inject_event();
         // Poll::Ready(event)
-        Poll::Pending
+        Poll::Ready(event)
     }
 }

@@ -79,8 +79,8 @@ pub struct PoolConfig {
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
     pool_id: usize,
     counters: PoolConnectionCounters,
-    pending: HashMap<ConnectionId, PendingConnection>,
-    established: HashMap<ConnectionId, EstablishedConnection>,
+    pending: HashMap<Connection, PendingConnection>,
+    established: HashMap<Connection, EstablishedConnection>,
     // This spawner is for connections buonded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type U
