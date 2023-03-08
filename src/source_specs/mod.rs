@@ -40,8 +40,8 @@ impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
     fn inject_event(&mut self, event: Self::InEvent) {
         
     }
-    fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Message> {
-        event
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+        Ok(())
     }
 }
 
@@ -120,9 +120,9 @@ impl ConnectionHandler<'_> for Interceptors {
     fn inject_event(&mut self, event: Self::InEvent) {
         println!("Hello Future! InEvent: {:?}", event);
     }
-    fn eject_event(&mut self, event: Self::OutEvent) -> Self {
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         println!("Hello Future! OutEvent: {:?}", event);
-        event
+        Ok(())
     }
 }
 

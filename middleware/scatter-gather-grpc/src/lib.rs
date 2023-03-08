@@ -15,13 +15,12 @@ use scatter_gather_core::{
 use std::{
     task::Poll,
     fmt,
-    
 };
 use futures::{
     Future,
     stream::{
         SplitSink, 
-        SplitStream
+        SplitStream, FuturesUnordered
     }, 
     io::Empty
 };
@@ -42,6 +41,7 @@ use tokio::
             self, 
             // Sender,
             // Receiver
+            error::SendError
         },
         broadcast::{
             self,
@@ -66,52 +66,41 @@ const ADDRESS: &str = "http://[::1]:54001";
 #[derive(Debug)]
 pub struct GrpcMiddleware {
     pub config: ServerConfig,
-    pub write: mpsc::Sender<Result<Summary, Status>>,
-    read: mpsc::Receiver<Result<Summary, Status>>,
+    pub write: mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
+    read: mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
+    // events: FuturesUnordered<Pin<Box<dyn Future<Output = ConnectionHandlerOutEvent<Connection>> + Send>>> 
     // conn: TInterceptor
 }
 
 
 impl GrpcMiddleware {
-
     pub async fn new(config: ServerConfig) -> GrpcMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
 
     pub async fn spin_up(config: ServerConfig) -> Result<Self, Box<dyn std::error::Error>> {
       
-        let (write, read): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = mpsc::channel(32);
+        let (write, read): (mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>, mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>) = mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = schema_specific::OrderBook::new(in_broadcast_clone);
         schema_specific::server(ADDRESS, channels).expect("Couldn't start server.");
-        let server_config = ServerConfig {
-            url: config.url.clone(),
-            prefix: config.prefix.clone(),
-            init_handle: config.init_handle.clone()
-        };
-        let connection = Connection {
-            id: ConnectionId::new(1000_usize),
-            source_type: server_config,
-        };
-
         Ok(
             Self {
                 config,
                 write,
                 read,
-                // conn: connection 
             }
         )
     }
 
-    async fn client_buf(&mut self, mut _buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
+    async fn client_buf(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Starting Client (Buffer).");
         // Creates a new client for accesing the gRPC service.
         let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
         .await?;  
-        while let Some(Ok(msg)) = self.read.recv().await {
+        while let Some(ConnectionHandlerOutEvent::ConnectionEvent(Ok(msg))) = self.read.recv().await {
             #[cfg(debug_assertions)]
             println!("Received while in client_buf: {:?}", msg);
             let input = futures::stream::iter([msg]).take(1);
@@ -139,23 +128,24 @@ impl fmt::Display for ConnectionHandlerError {
 // Implement ConnectionHandler for the middleware.
 
 impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
-    type InEvent = ConnectionHandlerInEvent;
+    type InEvent = ConnectionHandlerOutEvent<Result<Summary, Status>>;
     type OutEvent = ConnectionHandlerOutEvent<Connection>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         #[cfg(debug_assertions)]
         println!("Injecting event on GrpcMiddleware. {:?}", event);
+        self.client_buf();
     }
-    fn eject_event(& mut self, event: Self::OutEvent) -> Self::OutEvent {
+    fn eject_event(& mut self, event: Self::OutEvent) -> Result<(), SendError<ConnectionHandlerOutEvent<Connection>>> {
         #[cfg(debug_assertions)]
-        println!("Ejecting event on GrpcMiddleware. {:?}", event);
-        event
+        println!("Ejecting event within GrpcMiddleware. {:?}", event);
+        Ok(())
     }
 
     fn poll(
-        mut self,
+        self,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::OutEvent> 
+    ) -> std::task::Poll<ConnectionHandlerOutEvent<Connection>> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
         let connection: Connection = Connection {
@@ -166,10 +156,7 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
                 init_handle: self.config.init_handle.clone(),
             },
         };
-        let event = self.eject_event(Self::OutEvent::ConnectionEvent(connection));
-        // self.inject_event(ConnectionHandlerInEvent::Intercept);
-        // connection.inject_event();
-        // Poll::Ready(event)
+        let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);
         Poll::Ready(event)
     }
 }

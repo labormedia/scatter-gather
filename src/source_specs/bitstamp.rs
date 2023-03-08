@@ -91,8 +91,8 @@ impl ConnectionHandler<'_> for BitstampDepthInterceptor {
     fn inject_event(&mut self, event: Self::InEvent) {
         
     }
-    fn eject_event(&mut self, event: Self::OutEvent) -> ConnectionHandlerOutEvent<Message> {
-        event
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+        Ok(())
     }
 }
 

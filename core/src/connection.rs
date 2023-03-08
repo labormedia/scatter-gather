@@ -5,6 +5,11 @@ use std::{
         Poll,
         Context
     },
+    hash::{
+        Hash,
+        Hasher
+    }, 
+    sync::mpsc::SendError
 };
 
 #[derive(Debug)]
@@ -14,6 +19,21 @@ pub struct Connection {
     // pub handler: THandler
     // pub handler: THandler
 }
+
+impl PartialEq for Connection {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Connection {}
+
+impl Hash for Connection {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ConnectionId(usize);
@@ -54,7 +74,7 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     ) -> Poll<Self::OutEvent>;
 
     fn inject_event(&mut self, event: Self::InEvent);
-    fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent;
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>>;
 }
 
 impl<'b> ConnectionHandler<'b> for Connection {
@@ -76,7 +96,7 @@ impl<'b> ConnectionHandler<'b> for Connection {
         println!("Injecting event on Connection. {:?}", event);
     }
 
-    fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent {
-        event
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+        Ok(())
     }
 }

@@ -106,8 +106,8 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
         println!("Inject debug: InEvent: {:?}", event);
     }
 
-    fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent {
-        event
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+        Ok(())
     }
 
     fn poll(

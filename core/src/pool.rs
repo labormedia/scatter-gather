@@ -18,7 +18,11 @@ use std::{
     collections::HashMap,
     pin::Pin, 
     any::type_name,
-    fmt::Debug
+    fmt::Debug,
+    sync::{
+        Mutex,
+        Arc
+    }
 };
 use futures::{
     channel::mpsc,
@@ -31,29 +35,30 @@ use futures::{
     stream::{
         FuturesUnordered,
         SelectAll, Next
-    },
+    }, SinkExt,
 };
 
 #[derive(Debug)]
-pub struct PoolConnection {
-    conn: Pin<Box<Connection>>,
-    event: ConnectionHandlerInEvent//mpsc::Sender<ConnectionHandlerOutEvent<T>>
+pub struct PoolConnection<T: for <'a> ConnectionHandler<'a>> {
+    // conn: Pin<Box<Connection>>,
+    id: usize,
+    state: Arc<Mutex<T>>
 }
 
-pub enum PoolEvent {
-    ConnectionEstablished(PoolConnection),
-    ConnectionClosed(PoolConnection),
-    ConnectionEvent(PoolConnection),
+pub enum PoolEvent<T: for<'a> ConnectionHandler<'a>> {
+    ConnectionEstablished(PoolConnection<T>),
+    ConnectionClosed(PoolConnection<T>),
+    ConnectionEvent(PoolConnection<T>),
     Custom
 }
 
-impl Debug for PoolEvent {
+impl<T: for <'a> ConnectionHandler<'a>> Debug for PoolEvent<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Default")
     }
 }
 
-impl PoolEvent {
+impl<'b, T: for <'a> ConnectionHandler<'a>> PoolEvent<T> {
     fn notify_event<'a>(
         &'a self, 
         mut events: mpsc::Sender<&'a Self>
@@ -79,17 +84,17 @@ pub struct PoolConfig {
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
     pool_id: usize,
     counters: PoolConnectionCounters,
-    pending: HashMap<Connection, PendingConnection>,
-    established: HashMap<Connection, EstablishedConnection>,
+    pending: HashMap<Connection, PendingConnection<T>>,
+    established: HashMap<Connection, EstablishedConnection<T>>,
     // This spawner is for connections buonded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type U
     pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
-    pending_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
-    pending_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
-    established_connection_events_tx: mpsc::Sender<ConnectionHandlerOutEvent<T>>,
-    established_connection_events_rx: mpsc::Receiver<ConnectionHandlerOutEvent<T>>,
+    pending_connection_events_tx: mpsc::Sender<PoolConnection<T>>,
+    pending_connection_events_rx: mpsc::Receiver<PoolConnection<T>>,
+    established_connection_events_tx: mpsc::Sender<PoolConnection<T>>,
+    established_connection_events_rx: mpsc::Receiver<PoolConnection<T>>,
 }
 
 fn type_of<T>(_: T) -> &'static str {
@@ -110,8 +115,8 @@ U: Send + 'static + std::fmt::Debug
         Pool {
             pool_id,
             counters: PoolConnectionCounters::default() ,
-            pending: Default::default(),
-            established: Default::default(),
+            pending: HashMap::new(),
+            established: HashMap::new(),
             local_spawns: FuturesUnordered::new(),
             local_streams: SelectAll::new(),
             executor: None,
@@ -142,22 +147,18 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.push(stream);
     }
 
-    pub fn connect(&mut self) {
-        let binding = self.poll(&mut Context::from_waker(futures::task::noop_waker_ref()));
-        let value = match binding
+    pub async fn connect(self) {
+        match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
         {
             Poll::Ready(event) => { 
                 #[cfg(debug_assertions)]
                 println!("Poll Ready... : {event:?}");
-                Poll::Ready(event)
             }
             Poll::Pending => { 
                 #[cfg(debug_assertions)]
                 println!("Poll pending...");
-                Poll::Pending
             },
         } ;
-        println!("Got event : {:?}", value);
     }
 
     pub async fn intercept_stream(&mut self) {
@@ -178,47 +179,28 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.next()
     }
 
-    pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<<T as ConnectionHandler<'_>>::OutEvent> 
+    pub async fn poll(mut self, cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
     {
-        loop {
-            break match self.local_spawns.poll_next_unpin(cx) {
-                Poll::Pending => {
-                    #[cfg(debug_assertions)]
-                    println!("Poll Pending.");
-                    // return Poll::Pending;
-                    Poll::Pending
-                },
-                Poll::Ready(None) => {
-                    #[cfg(debug_assertions)]
-                    return Poll::Pending;
-                    unreachable!("unreachable.");
-                    // panic!("Code unreacheable.")
-                },
-                Poll::Ready(Some(value_I)) => { 
-                    #[cfg(debug_assertions)]
-                    println!("Ready I : \n Type : {:?}", type_of(&value_I));
-                    match value_I.poll(cx) 
-                    {
-                        Poll::Ready(conn_event) => {
-                            #[cfg(debug_assertions)]
-                            println!("Ready value_I.poll : \n Type : {:?}", type_of(&conn_event));
-                            Poll::Ready(conn_event)
-                        },
-                        Poll::Pending => {
-                            // #[cfg(debug_assertions)]
-                            // println!("Pending I : {:?}", value_I);
-                            Poll::Pending
-                        }
-                    }
-                },
+        while let Some(s) = self.local_spawns.next().await {
+                let pool_connection = PoolConnection {
+                    id: 0_usize,
+                    state: Arc::new(Mutex::new(s))
+                };
+                self.pending_connection_events_tx.send(pool_connection).await.expect("Could not send pending connection.");                
             };
-        }
+
+        while let Some(t) = self.pending_connection_events_rx.next().await {
+            if let Ok(state) = t.state.lock() {
+                println!("Received type: {:?}", state);
+            };
+        };
+        Poll::Pending
     }
 }
 
-pub struct PendingConnection (PoolConnection);
+pub struct PendingConnection<T: for <'a> ConnectionHandler<'a>> (PoolConnection<T>);
 
-pub struct EstablishedConnection (PoolConnection);
+pub struct EstablishedConnection<T: for<'a> ConnectionHandler<'a>> (PoolConnection<T>);
 
 #[derive(Debug, Clone)]
 pub struct PoolConnectionCounters {
