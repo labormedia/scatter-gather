@@ -64,27 +64,45 @@ pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
 
 #[derive(Debug)]
-pub struct GrpcMiddleware<TInterceptor: for <'a> ConnectionHandler<'a>> {
-    pub config: ServerConfig<TInterceptor>,
+pub struct GrpcMiddleware {
+    pub config: ServerConfig,
     pub write: mpsc::Sender<Result<Summary, Status>>,
-    read: mpsc::Receiver<Result<Summary, Status>>
+    read: mpsc::Receiver<Result<Summary, Status>>,
+    // conn: TInterceptor
 }
 
 
-impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> {
+impl GrpcMiddleware {
 
-    pub async fn new(config: ServerConfig<TInterceptor>) -> GrpcMiddleware<TInterceptor> {
+    pub async fn new(config: ServerConfig) -> GrpcMiddleware {
+        Self::spin_up(config).await.expect("Couldn't build Middleware.")
+    }
+
+    pub async fn spin_up(config: ServerConfig) -> Result<Self, Box<dyn std::error::Error>> {
+      
         let (write, read): (mpsc::Sender<Result<Summary, Status>>, mpsc::Receiver<Result<Summary, Status>>) = mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = schema_specific::OrderBook::new(in_broadcast_clone);
         schema_specific::server(ADDRESS, channels).expect("Couldn't start server.");
-        Self {
-            config,
-            write,
-            read
-        }
+        let server_config = ServerConfig {
+            url: config.url.clone(),
+            prefix: config.prefix.clone(),
+            init_handle: config.init_handle.clone()
+        };
+        let connection = Connection {
+            id: ConnectionId::new(1000_usize),
+            source_type: server_config,
+        };
 
+        Ok(
+            Self {
+                config,
+                write,
+                read,
+                // conn: connection 
+            }
+        )
     }
 
     async fn client_buf(&mut self, mut _buffer: mpsc::Receiver<Result<Summary, Status>>) -> Result<(), Box<dyn std::error::Error>> {
@@ -92,8 +110,7 @@ impl<TInterceptor: for <'a> ConnectionHandler<'a>> GrpcMiddleware<TInterceptor> 
         println!("Starting Client (Buffer).");
         // Creates a new client for accesing the gRPC service.
         let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
-            .await?;
-    
+        .await?;  
         while let Some(Ok(msg)) = self.read.recv().await {
             #[cfg(debug_assertions)]
             println!("Received while in client_buf: {:?}", msg);
@@ -121,9 +138,9 @@ impl fmt::Display for ConnectionHandlerError {
 
 // Implement ConnectionHandler for the middleware.
 
-impl<'b, T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> ConnectionHandler<'b> for GrpcMiddleware<T> {
-    type InEvent = ConnectionHandlerInEvent<Result<Summary, Status>>;
-    type OutEvent = ConnectionHandlerOutEvent<Connection<GrpcMiddleware<T>>>;
+impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
+    type InEvent = ConnectionHandlerInEvent;
+    type OutEvent = ConnectionHandlerOutEvent<Connection>;
 
     fn inject_event(&mut self, event: Self::InEvent) {
         #[cfg(debug_assertions)]
@@ -134,21 +151,23 @@ impl<'b, T: for<'a> ConnectionHandler<'a> + Interceptor + Sync + fmt::Debug> Con
     }
 
     fn poll(
-        self,
+        mut self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
-        let connection = Connection {
+        let connection: Connection = Connection {
             id : ConnectionId::new(0),
             source_type: ServerConfig {
                 url: self.config.url.clone(),
                 prefix: self.config.prefix.clone(),
                 init_handle: self.config.init_handle.clone(),
-                handler: self
-            }
+            },
         };
-        Poll::Ready(Self::OutEvent::ConnectionEvent(connection))
-        // Poll::Pending
+        // let event = self.eject_event(Self::OutEvent::ConnectionEvent(connection));
+        // self.inject_event(ConnectionHandlerInEvent::Intercept(&connection));
+        // connection.inject_event();
+        // Poll::Ready(event)
+        Poll::Pending
     }
 }

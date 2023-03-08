@@ -77,7 +77,7 @@ impl Interceptor for BitstampDepthInterceptor {
 }
 
 impl ConnectionHandler<'_> for BitstampDepthInterceptor {
-    type InEvent = connection::ConnectionHandlerInEvent<Message>;
+    type InEvent = connection::ConnectionHandlerInEvent;
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(

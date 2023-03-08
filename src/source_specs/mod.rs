@@ -26,7 +26,7 @@ pub trait Depth<T>: Send + Sync {
 }
 
 impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
-    type InEvent = ConnectionHandlerInEvent<Message>;
+    type InEvent = ConnectionHandlerInEvent;
     type OutEvent = ConnectionHandlerOutEvent<Message>;
 
     fn poll(

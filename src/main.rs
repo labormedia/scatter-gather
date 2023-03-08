@@ -26,13 +26,13 @@ fn main() {
         url: String::from("[::1]:54001"),
         prefix: String::from("http://"),
         init_handle: None,
-        handler: BinanceDepthInterceptor::new()
+        // handler: BinanceDepthInterceptor::new()
     };
     let pool_config = PoolConfig {
         task_event_buffer_size: 1
     };
 
-    let mut grpc_pool: Pool<GrpcMiddleware<BinanceDepthInterceptor>, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
+    let mut grpc_pool: Pool<GrpcMiddleware, orderbook::Summary> = Pool::new(0, pool_config, PoolConnectionLimits::default());
 
     grpc_pool.inject_connection(GrpcMiddleware::new(grpc_config));
     grpc_pool.connect();

@@ -45,17 +45,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let binance_interceptor = BinanceDepthInterceptor::new();
     let bitstamp_interceptor = BitstampDepthInterceptor::new();
 
-    let config_binance: ServerConfig<BinanceDepthInterceptor> = ServerConfig {
+    let config_binance: ServerConfig = ServerConfig {
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         init_handle: None,
-        handler: binance_interceptor
+        // handler: binance_interceptor
     };
-    let config_bitstamp: ServerConfig<BitstampDepthInterceptor> = ServerConfig { 
+    let config_bitstamp: ServerConfig = ServerConfig { 
         url: String::from("wss://ws.bitstamp.net"), 
         prefix: String::from("wss://"), 
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        handler: bitstamp_interceptor
+        // handler: bitstamp_interceptor
     };
 
     let binance = WebSocketsMiddleware::new(config_binance).await ;
@@ -72,11 +72,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 
-    let grpc_config: ServerConfig<Interceptors> = ServerConfig { 
+    let grpc_config: ServerConfig = ServerConfig { 
         url: String::from("[::1]:54001"), 
         prefix: String::from("http://"), 
         init_handle: None, 
-        handler: Interceptors::Depth
+        // handler: Interceptors::Depth
     };
 
 
@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
     };
-    let mut grpc_pool: Pool<GrpcMiddleware<Interceptors>,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+    let mut grpc_pool: Pool<GrpcMiddleware,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
 
 
     grpc_pool.inject_connection(grpc);

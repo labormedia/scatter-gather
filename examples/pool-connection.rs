@@ -26,17 +26,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let binance_interceptor = BinanceDepthInterceptor::new();
     let bitstamp_interceptor = BitstampDepthInterceptor::new();
 
-    let config_binance: ServerConfig<BinanceDepthInterceptor> = ServerConfig {
+    let config_binance: ServerConfig = ServerConfig {
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         init_handle: None,
-        handler: binance_interceptor
+        // handler: binance_interceptor
     };
-    let config_bitstamp: ServerConfig<BitstampDepthInterceptor> = ServerConfig { 
+    let config_bitstamp: ServerConfig = ServerConfig { 
         url: String::from("wss://ws.bitstamp.net"), 
         prefix: String::from("wss://"), 
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        handler: bitstamp_interceptor
+        // handler: bitstamp_interceptor
     };
 
     let connection1 = WebSocketsMiddleware::new(config_binance);
@@ -49,8 +49,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         task_event_buffer_size: 1
     };
 
-    let mut bitstamp_pool: Pool<WebSocketsMiddleware<BitstampDepthInterceptor>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
-    let mut binance_pool: Pool<WebSocketsMiddleware<BinanceDepthInterceptor>,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
+    let mut bitstamp_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+    let mut binance_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
 
     bitstamp_pool.collect_streams(Box::pin(connection2.await.get_stream()));
     binance_pool.collect_streams(Box::pin(connection1.await.get_stream()));

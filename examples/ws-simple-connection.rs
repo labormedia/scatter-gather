@@ -16,11 +16,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let bitstamp_interceptor = BitstampDepthInterceptor::new();
 
-    let config: ServerConfig<BitstampDepthInterceptor> = ServerConfig {
+    let config: ServerConfig = ServerConfig {
         url : String::from("wss://ws.bitstamp.net"),
         prefix: String::from(""),
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        handler: bitstamp_interceptor
+        // handler: bitstamp_interceptor
     };
     let mut connection = WebSocketsMiddleware::new(config).await;
     connection.send(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()).await;

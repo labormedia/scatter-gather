@@ -35,25 +35,25 @@ use futures::{
 };
 
 #[derive(Debug)]
-pub struct PoolConnection<T: for <'a> ConnectionHandler<'a>> {
-    conn: Pin<Box<Connection<T>>>,
-    event: ConnectionHandlerInEvent<T>//mpsc::Sender<ConnectionHandlerOutEvent<T>>
+pub struct PoolConnection {
+    conn: Pin<Box<Connection>>,
+    event: ConnectionHandlerInEvent//mpsc::Sender<ConnectionHandlerOutEvent<T>>
 }
 
-pub enum PoolEvent<T: for <'a> ConnectionHandler<'a> >{
-    ConnectionEstablished(PoolConnection<T>),
-    ConnectionClosed(PoolConnection<T>),
-    ConnectionEvent(PoolConnection<T>),
+pub enum PoolEvent {
+    ConnectionEstablished(PoolConnection),
+    ConnectionClosed(PoolConnection),
+    ConnectionEvent(PoolConnection),
     Custom
 }
 
-impl<T: for <'a> ConnectionHandler<'a>> Debug for PoolEvent<T> {
+impl Debug for PoolEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Default")
     }
 }
 
-impl<T: for <'a> ConnectionHandler<'a>> PoolEvent<T> {
+impl PoolEvent {
     fn notify_event<'a>(
         &'a self, 
         mut events: mpsc::Sender<&'a Self>
@@ -79,8 +79,8 @@ pub struct PoolConfig {
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
     pool_id: usize,
     counters: PoolConnectionCounters,
-    pending: HashMap<ConnectionId, PendingConnection<T>>,
-    established: HashMap<ConnectionId, EstablishedConnection<T>>,
+    pending: HashMap<ConnectionId, PendingConnection>,
+    established: HashMap<ConnectionId, EstablishedConnection>,
     // This spawner is for connections buonded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type U
@@ -96,7 +96,7 @@ fn type_of<T>(_: T) -> &'static str {
     type_name::<T>()
 }
 
-impl<T, U> Pool<T, U>
+impl<'b, T, U> Pool<T, U>
 where
 T: for <'a> ConnectionHandler<'a> + Debug + Send + Sync,
 // T: for <'a> ConnectionHandler<'a> + Debug + Sync + for <'a> ConnectionHandler<'a, OutEvent = T::<Self, 'a>>,
@@ -149,12 +149,12 @@ U: Send + 'static + std::fmt::Debug
             Poll::Ready(event) => { 
                 #[cfg(debug_assertions)]
                 println!("Poll Ready... : {event:?}");
-                event
+                Poll::Ready(event)
             }
             Poll::Pending => { 
                 #[cfg(debug_assertions)]
                 println!("Poll pending...");
-                PoolEvent::Custom
+                Poll::Pending
             },
         } ;
         println!("Got event : {:?}", value);
@@ -178,7 +178,7 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.next()
     }
 
-    pub fn poll<'b>(&mut self, cx: &mut Context<'_>) -> Poll<PoolEvent<T>> 
+    pub fn poll(&mut self, cx: &mut Context<'_>) -> Poll<<T as ConnectionHandler<'_>>::OutEvent> 
     {
         loop {
             break match self.local_spawns.poll_next_unpin(cx) {
@@ -196,17 +196,13 @@ U: Send + 'static + std::fmt::Debug
                 },
                 Poll::Ready(Some(value_I)) => { 
                     #[cfg(debug_assertions)]
-                    println!("Ready I : {:?} \n Type : {:?}", value_I, type_of(&value_I));
-                    
+                    println!("Ready I : \n Type : {:?}", type_of(&value_I));
                     match value_I.poll(cx) 
                     {
-                        Poll::Ready(event) => {
+                        Poll::Ready(conn_event) => {
                             #[cfg(debug_assertions)]
-                            println!("Ready value_I.poll : {:?} \n Type : {:?}", event, type_of(&event));
-
-                            Poll::Ready(
-                                PoolEvent::Custom
-                            )
+                            println!("Ready value_I.poll : \n Type : {:?}", type_of(&conn_event));
+                            Poll::Ready(conn_event)
                         },
                         Poll::Pending => {
                             // #[cfg(debug_assertions)]
@@ -220,9 +216,9 @@ U: Send + 'static + std::fmt::Debug
     }
 }
 
-pub struct PendingConnection<T: for <'a> ConnectionHandler<'a>> (PoolConnection<T>);
+pub struct PendingConnection (PoolConnection);
 
-pub struct EstablishedConnection<T: for <'a> ConnectionHandler<'a>> (PoolConnection<T>);
+pub struct EstablishedConnection (PoolConnection);
 
 #[derive(Debug, Clone)]
 pub struct PoolConnectionCounters {

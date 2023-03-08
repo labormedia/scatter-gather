@@ -19,10 +19,11 @@ pub trait Interceptor: Send {
 }
 
 #[derive(Debug)]
-pub struct ServerConfig<THandler: for <'a> ConnectionHandler<'a> > {
+pub struct ServerConfig {
     pub url: String,
     pub prefix: String,
     pub init_handle: Option<String>,
-    pub handler: THandler
+    // pub interceptor: T
+    // pub handler: THandler
     // pub handler: &'a THandler,
 }

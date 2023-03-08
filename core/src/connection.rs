@@ -8,9 +8,11 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Connection<THandler: for<'a> ConnectionHandler<'a>> {
+pub struct Connection {
     pub id: ConnectionId,
-    pub source_type: ServerConfig<THandler>,
+    pub source_type: ServerConfig,
+    // pub handler: THandler
+    // pub handler: THandler
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -24,10 +26,10 @@ impl ConnectionId {
 }
 
 #[derive(Debug)]
-pub enum ConnectionHandlerInEvent<T> {
+pub enum ConnectionHandlerInEvent {
     Connect,
     Disconnect,
-    Intercept(T)
+    Intercept()
 }
 
 #[derive(Debug)]
@@ -35,6 +37,7 @@ pub enum ConnectionHandlerOutEvent<TCustom> {
     ConnectionEstablished(TCustom),
     ConnectionClosed(TCustom),
     ConnectionEvent(TCustom),
+    Custom
     // ConnectionError(TError)
 }
 
@@ -54,9 +57,9 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent;
 }
 
-impl<'b, THandler:fmt::Debug + Send + Sync + for <'a> ConnectionHandler<'a> > ConnectionHandler<'b> for Connection<THandler> {
-    type InEvent = ConnectionHandlerInEvent<THandler>;
-    type OutEvent = ConnectionHandlerOutEvent<THandler>;
+impl<'b> ConnectionHandler<'b> for Connection {
+    type InEvent = ConnectionHandlerInEvent;
+    type OutEvent = ConnectionHandlerOutEvent<Connection>;
 
     fn poll(
             self,
@@ -69,7 +72,8 @@ impl<'b, THandler:fmt::Debug + Send + Sync + for <'a> ConnectionHandler<'a> > Co
     }
 
     fn inject_event(&mut self, event: Self::InEvent) {
-        
+        #[cfg(debug_assertions)]
+        println!("Injecting event on Connection. {:?}", event);
     }
 
     fn eject_event(&mut self, event: Self::OutEvent) -> Self::OutEvent {
