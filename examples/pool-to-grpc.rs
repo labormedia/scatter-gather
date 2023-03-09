@@ -114,15 +114,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             println!("Buffering.");
             let mut conn_lock = conn.lock().await;
             while let Some(intercepted) = ws_pool.next().await {
-                let level_point = match intercepted {
+                let level_point_left = match intercepted {
                     Interceptors::Binance(point) => {
-                        // let exchange = point.exchange();
                         let p = point.level();
                         let exchange = p.0;
                         p.1
                             .iter()
                             .map( |x| {
-                                println!("level ? {:?}", x);
                                 Level {
                                     exchange: exchange.clone(),
                                     price: x.left,
@@ -132,13 +130,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                             .collect::<Vec<Level>>()
                     }
                     Interceptors::Bitstamp(point) => {
-                        // let exchange = point.exchange();
                         let p = point.level();
                         let exchange = p.0;
                         p.1
                             .iter()
                             .map( |x| {
-                                println!("level ? {:?}", x);
                                 Level {
                                     exchange: exchange.clone(),
                                     price: x.left,
@@ -155,14 +151,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                          }])
                     }
                 };
-                println!("Level: {:?}", level_point);
+                // println!("Depth right (bids?) : {:?}", level_point_left);
                 conn_lock
                     .write
                     .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(
-                        Summary::default()
+                        Summary {
+                            spread: 0.0,
+                            bids: level_point_left,
+                            asks: Vec::new()
+                        }
                     )))
                     .await?;
-                conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
+                conn_lock
+                    .client_buf()
+                    .await
+                    .expect("Unable to buffer gRPC channel.");
             }
 
         }
