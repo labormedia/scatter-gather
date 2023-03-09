@@ -87,14 +87,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
     };
-    let mut grpc_pool: Pool<GrpcMiddleware,Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+
+    let pool_config2 = PoolConfig {
+        task_event_buffer_size: 1
+    };
+
+    let mut ws_pool: Pool<WebSocketsMiddleware, Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default()); 
+    let mut grpc_pool: Pool<GrpcMiddleware,Interceptors> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
 
 
     grpc_pool.inject_connection(grpc);
 
 
-    grpc_pool.collect_streams(Box::pin(binance_intercepted));
-    grpc_pool.collect_streams(Box::pin(bitstamp_intercepted));
+    ws_pool.collect_streams(Box::pin(binance_intercepted));
+    ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
     // grpc_pool.intercept_stream().await;
 
@@ -102,12 +108,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         Poll::Ready(conn) => {
             println!("Buffering.");
             let mut conn_lock = conn.lock().await;
-            // grpc_pool.next();Me p
-            conn_lock
-                .write
-                .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default())))
-                .await?;
-            conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
+            while let Some(intercepted) = ws_pool.next().await {
+                let data = match intercepted {
+                    Interceptors::Binance(point) => {
+                        println!("{:?}",point.get_bids());
+                    }
+                    Interceptors::Bitstamp(point) => {
+                        println!("{:?}",point.get_bids());
+                    }
+                    Depth => {
+                        ()
+                    }
+                };
+                conn_lock
+                    .write
+                    .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default())))
+                    .await?;
+                conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
+            }
+
         }
         Poll::Pending => {}
     };

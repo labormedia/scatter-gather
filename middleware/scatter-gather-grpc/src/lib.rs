@@ -112,7 +112,7 @@ impl GrpcMiddleware {
             let request = tonic::Request::new(input);
             channel.book_summary_feed(request).await.expect("Cannot buffer book_summary_feed.");
         };
-        
+
         println!("Leaving client_buf.");
         Ok(())
     }
