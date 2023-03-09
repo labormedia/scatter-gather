@@ -8,6 +8,7 @@ use scatter_gather_core::{
         PoolConfig,
         PoolConnectionLimits, 
     },
+    connection::ConnectionHandlerOutEvent
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather_grpc::{
@@ -31,7 +32,8 @@ use scatter_gather::source_specs::{
 use std::{
     pin::Pin,
     any::type_name,
-    task::Context
+    task::Context,
+    task::Poll
 };
 use tokio::runtime::Runtime;
 
@@ -95,7 +97,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     grpc_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
     // grpc_pool.intercept_stream().await;
-    grpc_pool.connect().await;
+
+    match grpc_pool.connect().await {
+        Poll::Ready(conn) => {
+            println!("Buffering.");
+            let mut conn_lock = conn.lock().await;
+            // grpc_pool.next();Me p
+            conn_lock
+                .write
+                .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default())))
+                .await?;
+            conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
+        }
+        Poll::Pending => {}
+    };
     println!("Connected ?");
     // grpc_pool.connect().await;
 
