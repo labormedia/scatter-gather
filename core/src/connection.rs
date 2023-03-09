@@ -8,8 +8,7 @@ use std::{
     hash::{
         Hash,
         Hasher
-    }, 
-    sync::mpsc::SendError
+    },
 };
 
 #[derive(Debug)]
@@ -73,8 +72,9 @@ pub trait ConnectionHandler<'a>: 'a + Send {
         cx: &mut Context<'_>,
     ) -> Poll<Self::OutEvent>;
 
-    fn inject_event(&mut self, event: Self::InEvent);
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>>;
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>>;
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 impl<'b> ConnectionHandler<'b> for Connection {
@@ -91,12 +91,16 @@ impl<'b> ConnectionHandler<'b> for Connection {
         Poll::Pending
     }
 
-    fn inject_event(&mut self, event: Self::InEvent) {
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Injecting event on Connection. {:?}", event);
+        Ok(())
     }
 
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         Ok(())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self as _
     }
 }

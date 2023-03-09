@@ -15,6 +15,8 @@ use scatter_gather_core::{
 use std::{
     task::Poll,
     fmt,
+    thread,
+    time
 };
 use futures::{
     Future,
@@ -24,7 +26,9 @@ use futures::{
     }, 
     io::Empty
 };
-use schema_specific::orderbook::{Summary, self, orderbook_aggregator_server::OrderbookAggregator};
+use schema_specific::orderbook::{
+    Summary,
+};
 use tonic::{
     transport::Server, 
     Request, 
@@ -58,7 +62,6 @@ use tokio_stream::{
     StreamExt,
     Stream
 };
-use tonic::codegen::Pin;
 
 pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
@@ -68,8 +71,6 @@ pub struct GrpcMiddleware {
     pub config: ServerConfig,
     pub write: mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
     read: mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
-    // events: FuturesUnordered<Pin<Box<dyn Future<Output = ConnectionHandlerOutEvent<Connection>> + Send>>> 
-    // conn: TInterceptor
 }
 
 
@@ -85,28 +86,34 @@ impl GrpcMiddleware {
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = schema_specific::OrderBook::new(in_broadcast_clone);
         schema_specific::server(ADDRESS, channels).expect("Couldn't start server.");
-        Ok(
-            Self {
-                config,
-                write,
-                read,
-            }
-        )
+        let mut i = Self {
+            config,
+            write,
+            read,
+        };
+        thread::sleep(time::Duration::from_secs(2));
+        Ok(i)
     }
 
-    async fn client_buf(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn client_buf(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Starting Client (Buffer).");
         // Creates a new client for accesing the gRPC service.
+        // tokio::spawn( async {
+        println!("Reached.");
         let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
-        .await?;  
-        while let Some(ConnectionHandlerOutEvent::ConnectionEvent(Ok(msg))) = self.read.recv().await {
+            .await.expect("Cannot start gRPC client.");
+        // self.write.send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default()))).await?;
+
+        if let Some(ConnectionHandlerOutEvent::ConnectionEvent(Ok(msg))) = self.read.recv().await {
             #[cfg(debug_assertions)]
             println!("Received while in client_buf: {:?}", msg);
             let input = futures::stream::iter([msg]).take(1);
             let request = tonic::Request::new(input);
-            channel.book_summary_feed(request).await?;
-        }
+            channel.book_summary_feed(request).await.expect("Cannot buffer book_summary_feed.");
+        };
+        
+        println!("Leaving client_buf.");
         Ok(())
     }
 
@@ -131,10 +138,10 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
     type InEvent = ConnectionHandlerOutEvent<Result<Summary, Status>>;
     type OutEvent = ConnectionHandlerOutEvent<Connection>;
 
-    fn inject_event(&mut self, event: Self::InEvent) {
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Injecting event on GrpcMiddleware. {:?}", event);
-        self.client_buf();
+        Ok(())
     }
     fn eject_event(& mut self, event: Self::OutEvent) -> Result<(), SendError<ConnectionHandlerOutEvent<Connection>>> {
         #[cfg(debug_assertions)]
@@ -158,5 +165,9 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
         };
         let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);
         Poll::Ready(event)
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self as _
     }
 }

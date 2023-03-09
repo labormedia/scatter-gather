@@ -25,26 +25,6 @@ pub trait Depth<T>: Send + Sync {
     fn get_asks(&self) -> &Vec<T>;
 }
 
-impl<'a, T: Send + 'a> ConnectionHandler<'a> for Box<dyn Depth<T> + 'a> {
-    type InEvent = ConnectionHandlerInEvent;
-    type OutEvent = ConnectionHandlerOutEvent<Message>;
-
-    fn poll(
-        mut self,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::OutEvent> 
-    {
-        // Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("Custom Event".to_string())))
-        Poll::Pending
-    }
-    fn inject_event(&mut self, event: Self::InEvent) {
-        
-    }
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
-        Ok(())
-    }
-}
-
 impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Depth: {:?}", self)
@@ -117,12 +97,16 @@ impl ConnectionHandler<'_> for Interceptors {
         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
         Poll::Pending
     }
-    fn inject_event(&mut self, event: Self::InEvent) {
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         println!("Hello Future! InEvent: {:?}", event);
+        Ok(())
     }
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         println!("Hello Future! OutEvent: {:?}", event);
         Ok(())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self as _
     }
 }
 

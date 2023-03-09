@@ -20,7 +20,6 @@ use std::{
     any::type_name,
     fmt::Debug,
     sync::{
-        Mutex,
         Arc
     }
 };
@@ -37,6 +36,7 @@ use futures::{
         SelectAll, Next
     }, SinkExt,
 };
+use tokio::sync::Mutex;
 
 #[derive(Debug)]
 pub struct PoolConnection<T: for <'a> ConnectionHandler<'a>> {
@@ -147,18 +147,29 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.push(stream);
     }
 
-    pub async fn connect(self) {
+    pub async fn connect(self) -> Poll<Arc<Mutex<T>>> {
         match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
         {
             Poll::Ready(event) => { 
                 #[cfg(debug_assertions)]
                 println!("Poll Ready... : {event:?}");
+                return match event {
+                    ConnectionHandlerOutEvent::ConnectionEvent(pool_conn) => {
+                        let a = pool_conn.state;
+                        return Poll::Ready(a);
+                    }
+                    _ => {
+                        Poll::Pending
+                    }
+                }
+
             }
             Poll::Pending => { 
                 #[cfg(debug_assertions)]
                 println!("Poll pending...");
+                Poll::Pending
             },
-        } ;
+        } 
     }
 
     pub async fn intercept_stream(&mut self) {
@@ -181,19 +192,25 @@ U: Send + 'static + std::fmt::Debug
 
     pub async fn poll(mut self, cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
     {
+        println!("Entering Pool poll.");
         while let Some(s) = self.local_spawns.next().await {
-                let pool_connection = PoolConnection {
-                    id: 0_usize,
-                    state: Arc::new(Mutex::new(s))
-                };
-                self.pending_connection_events_tx.send(pool_connection).await.expect("Could not send pending connection.");                
+            println!("Debug 1");
+            let pool_connection = PoolConnection {
+                id: 0_usize,
+                state: Arc::new(Mutex::new(s))
             };
-
-        while let Some(t) = self.pending_connection_events_rx.next().await {
-            if let Ok(state) = t.state.lock() {
-                println!("Received type: {:?}", state);
-            };
+            self.pending_connection_events_tx.send(pool_connection).await.expect("Could not send pending connection.");                
         };
+
+        if let Some(t) = self.pending_connection_events_rx.next().await {
+            println!("Debug 2");
+            // if let Ok(state) = t.state.lock() {
+            //     state.as_any().downcast_ref::<T>().unwrap();
+            //     println!("Received type: {:?}", state);
+            // };
+            return Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(t))
+        };
+        println!("Dispatching Pool poll.");
         Poll::Pending
     }
 }

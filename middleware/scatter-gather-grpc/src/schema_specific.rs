@@ -133,10 +133,14 @@ pub fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::error:
     println!("Starting service.");
     let service = OrderbookAggregatorServer::new(inner);
     // let rt = Runtime::new()?;
-    let _b = tokio::spawn(async {
+    tokio::spawn(async {
         #[cfg(debug_assertions)]
-        println!("Building server.");
-        Server::builder().add_service(service).serve("[::1]:54001".parse().unwrap()).await.unwrap();
+        println!("Building server...");
+        Server::builder()
+            .add_service(service)
+            .serve("[::1]:54001".parse().unwrap())
+            .await
+            .expect("Cannot start server.");
         #[cfg(debug_assertions)]
         println!("Server builder passed");
     });

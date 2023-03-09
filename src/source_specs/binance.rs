@@ -104,14 +104,18 @@ impl ConnectionHandler<'_> for BinanceDepthInterceptor {
         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
         Poll::Pending
     }
-    fn inject_event(&mut self, event: Self::InEvent) {
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Hello Future! InEvent: {:?}", event);
+        Ok(())
     }
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         #[cfg(debug_assertions)]
         println!("Hello Future! OutEvent: {:?}", event);
         Ok(())
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self as _
     }
 }
 

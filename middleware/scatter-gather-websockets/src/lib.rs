@@ -101,9 +101,10 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
     type InEvent = ConnectionHandlerInEvent;
     type OutEvent = ConnectionHandlerOutEvent<Result<Message, Error>>;
 
-    fn inject_event(&mut self, event: Self::InEvent) {
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Inject debug: InEvent: {:?}", event);
+        Ok(())
     }
 
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
@@ -125,7 +126,10 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
             }
             return Poll::Pending
         } 
+    }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self as _
     }
 }
 
