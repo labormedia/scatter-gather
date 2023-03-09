@@ -38,16 +38,35 @@ impl BitstampDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn exchange(&self) -> String { String::from("Bitstamp") }
+    
+}
+
+fn interceptor_to_pb(data: BitstampDepthInterceptor) -> (String, Vec<Level>, Vec<Level>) {
+    let mut a = Vec::new();
+    a.clone_from_slice(&data.data.asks);
+    let mut b = Vec::new();
+    b.clone_from_slice(&data.data.bids);
+    let exchange = data.exchange().clone();
+
+    (exchange, b, a)
 }
 
 impl Depth<Level> for BitstampDepthInterceptor {
-    fn get_bids(&self) -> &Vec<Level> {
-        &self.data.bids
+    fn summary(self) -> (String, Vec<Level>, Vec<Level>) {
+        let mut a = Vec::new();
+        let _ = a.extend_from_slice(&self.data.asks);
+        let mut b = Vec::new();
+        let _ = b.extend_from_slice(&self.data.bids);
+
+        (self.exchange(), b, a)
+    }
+    fn exchange(self) -> String { String::from("Bitstamp") }
+    fn get_bids(self) -> Vec<Level> {
+        self.data.bids
     }
 
-    fn get_asks(&self) -> &Vec<Level> {
-        &self.data.asks
+    fn get_asks(self) -> Vec<Level> {
+        self.data.asks
     }
 }
 
@@ -55,12 +74,12 @@ impl Interceptor for BitstampDepthInterceptor {
     type Input = String;
     type Output = BitstampDepthInterceptor;
     fn helper(input: String) -> Self {
-        #[cfg(debug_assertions)]
-        println!("Input: {:?}", input);
+        // #[cfg(debug_assertions)]
+        // println!("Input: {:?}", input);
         match serde_json::from_str(&input){
             Ok(a) => {
-                #[cfg(debug_assertions)]
-                println!("Input: {:?}", a);
+                // #[cfg(debug_assertions)]
+                // println!("Input: {:?}", a);
                 a
             },
             Err(e) => {

@@ -55,16 +55,26 @@ impl BinanceDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
     }
-    fn exchange() -> String { String::from("Binance") }
+    // fn exchange() -> String { String::from("Binance") }
 }
 
 impl Depth<Level> for BinanceDepthInterceptor {
-    fn get_bids(&self) -> &Vec<Level> {
-        &self.b
+    fn summary(self) -> (String, Vec<Level>, Vec<Level>) {
+        let mut a = vec![];
+        a.extend_from_slice(&self.a);
+        let mut b = vec![];
+        b.extend_from_slice(&self.b);
+        
+
+        (self.exchange(), b, a)
+    }
+    fn exchange(self) -> String { String::from("Bitstamp") }
+    fn get_bids(self) -> Vec<Level> {
+        self.b
     }
 
-    fn get_asks(&self) -> &Vec<Level> {
-        &self.a
+    fn get_asks(self) -> Vec<Level> {
+        self.a
     }
 }
 
@@ -72,12 +82,12 @@ impl Interceptor for BinanceDepthInterceptor {
     type Input = String;
     type Output = BinanceDepthInterceptor;
     fn helper(input: Self::Input) -> Self::Output {
-        #[cfg(debug_assertions)]
-        println!("Input: {:?}", input);
+        // #[cfg(debug_assertions)]
+        // println!("Input: {:?}", input);
         match serde_json::from_str(&input){
             Ok(a) => {
-                #[cfg(debug_assertions)]
-                println!("Input: {:?}", a);
+                // #[cfg(debug_assertions)]
+                // println!("Input: {:?}", a);
                 a
             },
             Err(e) => {

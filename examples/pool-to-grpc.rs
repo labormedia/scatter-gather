@@ -29,6 +29,7 @@ use scatter_gather::source_specs::{
     binance::BinanceDepthInterceptor,
     bitstamp::BitstampDepthInterceptor,
 };
+use tonic::service::interceptor;
 use std::{
     pin::Pin,
     any::type_name,
@@ -102,29 +103,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     ws_pool.collect_streams(Box::pin(binance_intercepted));
     ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
+    // ws_pool.local_streams
+    //     .map(|interceptor| ;
+
+
     // grpc_pool.intercept_stream().await;
 
     match grpc_pool.connect().await {
         Poll::Ready(conn) => {
             println!("Buffering.");
-            let mut conn_lock = conn.lock().await;
+            let conn_lock = conn.lock().await;
             while let Some(intercepted) = ws_pool.next().await {
                 let data = match intercepted {
                     Interceptors::Binance(point) => {
-                        println!("{:?}",point.get_bids());
+                        point.summary()
                     }
                     Interceptors::Bitstamp(point) => {
-                        println!("{:?}",point.get_bids());
+                        point.summary()
                     }
-                    Depth => {
-                        ()
+                    _Depth => {
+                        (String::from("Pool"), Vec::new(), Vec::new())
                     }
                 };
-                conn_lock
-                    .write
-                    .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default())))
-                    .await?;
-                conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
+                println!("Data: {:?}", data);
+                // conn_lock
+                //     .write
+                //     .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default())))
+                //     .await?;
+                // conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
             }
 
         }
