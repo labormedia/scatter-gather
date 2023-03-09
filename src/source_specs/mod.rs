@@ -21,7 +21,7 @@ use std::fmt::Debug;
 use self::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 
 pub trait Depth<T>: Send + Sync {
-    fn summary(self) -> (String, Vec<T>, Vec<T>);
+    fn level(self) -> (String, Vec<T>, Vec<T>);
     fn exchange(self) -> String;
     fn get_bids(self) -> Vec<T>;
     fn get_asks(self) -> Vec<T>;
@@ -36,9 +36,9 @@ impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
 pub struct Level {
     #[serde(deserialize_with = "helpers::quantity_from_str")]
-    left: f64,
+    pub left: f64,
     #[serde(deserialize_with = "helpers::quantity_from_str")]
-    right: f64
+    pub right: f64
 }
 
 pub mod helpers {

@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .map(|msg| BitstampDepthInterceptor::intercept(msg));
     while let Some(data) = new_stream.next().await {
         // let data: interceptor = connection.config.handler.intercept(a?.into_text()?);
-        println!("Summary: {:?}", data.summary());
+        println!("Summary: {:?}", data.level());
     }
     Ok(())
 }

@@ -112,25 +112,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     match grpc_pool.connect().await {
         Poll::Ready(conn) => {
             println!("Buffering.");
-            let conn_lock = conn.lock().await;
+            let mut conn_lock = conn.lock().await;
             while let Some(intercepted) = ws_pool.next().await {
-                let data = match intercepted {
+                let level_point = match intercepted {
                     Interceptors::Binance(point) => {
-                        point.summary()
+                        // let exchange = point.exchange();
+                        let p = point.level();
+                        let exchange = p.0;
+                        p.1
+                            .iter()
+                            .map( |x| {
+                                println!("level ? {:?}", x);
+                                Level {
+                                    exchange: exchange.clone(),
+                                    price: x.left,
+                                    amount: x.right
+                                } as Level
+                            })
+                            .collect::<Vec<Level>>()
                     }
                     Interceptors::Bitstamp(point) => {
-                        point.summary()
+                        // let exchange = point.exchange();
+                        let p = point.level();
+                        let exchange = p.0;
+                        p.1
+                            .iter()
+                            .map( |x| {
+                                println!("level ? {:?}", x);
+                                Level {
+                                    exchange: exchange.clone(),
+                                    price: x.left,
+                                    amount: x.right
+                                } as Level
+                            })
+                            .collect::<Vec<Level>>()
                     }
                     _Depth => {
-                        (String::from("Pool"), Vec::new(), Vec::new())
+                        Vec::from([Level { 
+                            exchange: String::from("yes"),
+                            price: 0.0,
+                            amount: 0.0
+                         }])
                     }
                 };
-                println!("Data: {:?}", data);
-                // conn_lock
-                //     .write
-                //     .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(Summary::default())))
-                //     .await?;
-                // conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
+                println!("Level: {:?}", level_point);
+                conn_lock
+                    .write
+                    .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(
+                        Summary::default()
+                    )))
+                    .await?;
+                conn_lock.client_buf().await.expect("Unable to buffer gRPC channel.");
             }
 
         }

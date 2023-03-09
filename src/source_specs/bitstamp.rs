@@ -52,7 +52,7 @@ fn interceptor_to_pb(data: BitstampDepthInterceptor) -> (String, Vec<Level>, Vec
 }
 
 impl Depth<Level> for BitstampDepthInterceptor {
-    fn summary(self) -> (String, Vec<Level>, Vec<Level>) {
+    fn level(self) -> (String, Vec<Level>, Vec<Level>) {
         let mut a = Vec::new();
         let _ = a.extend_from_slice(&self.data.asks);
         let mut b = Vec::new();

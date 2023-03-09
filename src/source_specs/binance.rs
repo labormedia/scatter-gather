@@ -59,7 +59,7 @@ impl BinanceDepthInterceptor {
 }
 
 impl Depth<Level> for BinanceDepthInterceptor {
-    fn summary(self) -> (String, Vec<Level>, Vec<Level>) {
+    fn level(self) -> (String, Vec<Level>, Vec<Level>) {
         let mut a = vec![];
         a.extend_from_slice(&self.a);
         let mut b = vec![];
