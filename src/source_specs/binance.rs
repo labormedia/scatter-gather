@@ -68,7 +68,7 @@ impl Depth<Level> for BinanceDepthInterceptor {
 
         (self.exchange(), b, a)
     }
-    fn exchange(self) -> String { String::from("Bitstamp") }
+    fn exchange(self) -> String { String::from("Binance") }
     fn get_bids(self) -> Vec<Level> {
         self.b
     }

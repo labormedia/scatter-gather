@@ -99,7 +99,7 @@ impl GrpcMiddleware {
         #[cfg(debug_assertions)]
         println!("Starting Client (Buffer).");
         // Creates a new client for accesing the gRPC service.
-        // tokio::spawn( async {
+        #[cfg(debug_assertions)]
         println!("Reached.");
         let mut channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
             .await.expect("Cannot start gRPC client.");
@@ -112,7 +112,7 @@ impl GrpcMiddleware {
             let request = tonic::Request::new(input);
             channel.book_summary_feed(request).await.expect("Cannot buffer book_summary_feed.");
         };
-
+        #[cfg(debug_assertions)]
         println!("Leaving client_buf.");
         Ok(())
     }

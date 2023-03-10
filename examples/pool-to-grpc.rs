@@ -120,6 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                         let exchange = p.0;
                         p.1
                             .iter()
+                            .take(3)
                             .map( |x| {
                                 Level {
                                     exchange: exchange.clone(),
@@ -137,6 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                         let exchange = p.0;
                         p.1
                             .iter()
+                            .take(3)
                             .map( |x| {
                                 Level {
                                     exchange: exchange.clone(),
