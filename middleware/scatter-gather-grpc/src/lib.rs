@@ -91,7 +91,7 @@ impl GrpcMiddleware {
             write,
             read,
         };
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(time::Duration::from_secs(5));
         Ok(i)
     }
 
@@ -108,7 +108,7 @@ impl GrpcMiddleware {
         if let Some(ConnectionHandlerOutEvent::ConnectionEvent(Ok(msg))) = self.read.recv().await {
             #[cfg(debug_assertions)]
             println!("Received while in client_buf: {:?}", msg);
-            let input = futures::stream::iter([msg]).take(1);
+            let input = futures::stream::iter([msg]).take(10);
             let request = tonic::Request::new(input);
             channel.book_summary_feed(request).await.expect("Cannot buffer book_summary_feed.");
         };

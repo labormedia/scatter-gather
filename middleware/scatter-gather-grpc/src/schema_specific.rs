@@ -104,7 +104,12 @@ impl OrderbookAggregator for OrderBook {
         while let Some(check) = inner.next().await {
             #[cfg(debug_assertions)]
             println!("Check : {:?}", check);
-            self.rx.clone().send(check);
+            match self.rx.send(check) {
+                Ok(a) => {},
+                Err(e) => {
+                    println!("---------------------------- Dropping frame: {:?}", e);
+                }
+            };
         };
         Ok(Response::new(orderbook::Empty {}))
     }

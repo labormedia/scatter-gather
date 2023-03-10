@@ -128,6 +128,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                                 } as Level
                             })
                             .collect::<Vec<Level>>()
+                            // Data is an order book state snapshot (oracle) within
+                            // a time frame, so we can treat it as an iterator
+                            // and apply business logic within this time frame.
                     }
                     Interceptors::Bitstamp(point) => {
                         let p = point.level();
@@ -142,6 +145,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                                 } as Level
                             })
                             .collect::<Vec<Level>>()
+                            // we can collect at the end of the business logic,
+                            // if the time buffer is enough for the process.
                     }
                     _Depth => {
                         Vec::from([Level { 
