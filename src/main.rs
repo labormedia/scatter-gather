@@ -27,14 +27,14 @@ use scatter_gather::source_specs::{
     Level as DepthLevel,
     Interceptors,
     binance::BinanceDepthInterceptor,
-    bitstamp::BitstampDepthInterceptor,
+    bitstamp::BitstampDepthInterceptor, self,
 };
 use tonic::service::interceptor;
 use std::{
     pin::Pin,
     any::type_name,
     task::Context,
-    task::Poll
+    task::Poll, iter::Sum
 };
 use tokio::runtime::Runtime;
 
@@ -110,23 +110,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         Poll::Ready(conn) => {
             println!("Buffering.");
             let mut conn_lock = conn.lock().await;
+            let mut state: Summary = Summary::default();
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
-                let level_point_left = match intercepted {
+                let update_point: (Vec<Level>, Vec<Level>) = match intercepted {
                     Interceptors::Binance(point) => {
                         let p = point.level();
                         let exchange = p.0;
-                        p.1
-                            .iter()
-                            .take(3)
-                            .map( |x| {
-                                Level {
-                                    exchange: exchange.clone(),
-                                    price: x.left,
-                                    amount: x.right
-                                } as Level
-                            })
-                            .collect::<Vec<Level>>()
+                        (
+                            p.1
+                                .iter()
+                                .map( |x| {
+                                    Level {
+                                        exchange: exchange.clone(),
+                                        price: x.left,
+                                        amount: x.right
+                                    } as Level
+                                })
+                                .collect::<Vec<Level>>(),
+                            p.2
+                                .iter()
+                                .map( |x| {
+                                    Level {
+                                        exchange: exchange.clone(),
+                                        price: x.left,
+                                        amount: x.right
+                                    } as Level
+                                })
+                                .collect::<Vec<Level>>(),
+                        )
                             // Data is an order book state snapshot (oracle) within
                             // a time frame, so we can treat it as an iterator
                             // and apply business logic within this time frame.
@@ -134,36 +146,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     Interceptors::Bitstamp(point) => {
                         let p = point.level();
                         let exchange = p.0;
-                        p.1
-                            .iter()
-                            .take(3)
-                            .map( |x| {
-                                Level {
-                                    exchange: exchange.clone(),
-                                    price: x.left,
-                                    amount: x.right
-                                } as Level
-                            })
-                            .collect::<Vec<Level>>()
+                        (
+                            p.1
+                                .iter()
+                                .map( |x| {
+                                    Level {
+                                        exchange: exchange.clone(),
+                                        price: x.left,
+                                        amount: x.right
+                                    } as Level
+                                })
+                                .collect::<Vec<Level>>(),
+                            p.2
+                                .iter()
+                                .map( |x| {
+                                    Level {
+                                        exchange: exchange.clone(),
+                                        price: x.left,
+                                        amount: x.right
+                                    } as Level
+                                })
+                                .collect::<Vec<Level>>(),
+                        )
                             // we can collect at the end of the business logic,
                             // if the time buffer is enough for the process.
                     }
                     _Depth => {
-                        Vec::from([Level { 
-                            exchange: String::from("mock/bench"),
-                            price: 0.0,
-                            amount: 0.0
-                         }])
+                        (
+                            Vec::from([Level { 
+                                exchange: String::from("mock/bench"),
+                                price: 0.0,
+                                amount: 0.0
+                            }]),
+                            Vec::from([Level { 
+                                exchange: String::from("mock/bench"),
+                                price: 0.0,
+                                amount: 0.0
+                            }])
+                        )
                     }
                 };
-                // println!("Depth right (bids?) : {:?}", level_point_left);
                 conn_lock
                     .write
                     .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(
                         Summary {
                             spread: 0.0,
-                            bids: level_point_left,
-                            asks: Vec::new()
+                            bids: update_point.0,
+                            asks: update_point.1
                         }
                     )))
                     .await?;

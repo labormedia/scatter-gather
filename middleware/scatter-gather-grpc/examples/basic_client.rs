@@ -6,7 +6,7 @@ const ADDRESS: &str = "http://[::1]:54001";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    client(13).await?;
+    client(0).await?;
     Ok(())
 }
 
@@ -24,7 +24,7 @@ async fn client(id: i32) -> Result<(), Box<dyn std::error::Error>> {
     while let Ok(item) = stream.message().await {
         match item {
             Some( a) => {
-                #[cfg(debug_assertions)]
+                // #[cfg(debug_assertions)]
                 println!("\tClient {:?} Item: {:?}", id, a)
             },
             None => { 
