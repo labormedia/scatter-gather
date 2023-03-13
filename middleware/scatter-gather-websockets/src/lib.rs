@@ -1,6 +1,8 @@
 use scatter_gather_core as sgc;
 use scatter_gather_core::middleware_specs::ServerConfig;
 use sgc::connection::{
+    Connection,
+    ConnectionId,
     ConnectionHandlerInEvent,
     ConnectionHandlerOutEvent, 
     ConnectionHandler
@@ -99,7 +101,7 @@ impl fmt::Display for ConnectionHandlerError {
 // This will facilitate the integration with the other elements of the suite.
 impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
     type InEvent = ConnectionHandlerInEvent;
-    type OutEvent = ConnectionHandlerOutEvent<Result<Message, Error>>;
+    type OutEvent = ConnectionHandlerOutEvent<Connection>;
 
     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
@@ -116,16 +118,16 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<Self::OutEvent> 
     {
-        loop {
-            match self.read.poll_next_unpin(cx) {
-                Poll::Ready(None) => {},
-                Poll::Ready(a) => {
-                    println!("Read message: {:?}", a);
-                },
-                Poll::Pending => {}
-            }
-            return Poll::Pending
-        } 
+        let connection: Connection = Connection {
+            id : ConnectionId::new(0),
+            source_type: ServerConfig {
+                url: self.config.url.clone(),
+                prefix: self.config.prefix.clone(),
+                init_handle: self.config.init_handle.clone(),
+            },
+        };        
+        let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);
+        Poll::Ready(event)
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

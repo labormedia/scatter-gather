@@ -44,6 +44,14 @@ impl ConnectionId {
     }
 }
 
+impl std::ops::Add<usize> for ConnectionId {
+    type Output = Self;
+
+    fn add(self, other: usize) -> Self {
+        Self(self.0 + other)
+    }
+}
+
 #[derive(Debug)]
 pub enum ConnectionHandlerInEvent {
     Connect,

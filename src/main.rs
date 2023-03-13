@@ -45,9 +45,6 @@ fn type_of<T>(_: T) -> &'static str {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
-    let binance_interceptor = BinanceDepthInterceptor::new();
-    let bitstamp_interceptor = BitstampDepthInterceptor::new();
-
     let config_binance: ServerConfig = ServerConfig {
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
@@ -153,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     }
                     _Depth => {
                         Vec::from([Level { 
-                            exchange: String::from("yes"),
+                            exchange: String::from("mock/bench"),
                             price: 0.0,
                             amount: 0.0
                          }])
