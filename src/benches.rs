@@ -1,11 +1,8 @@
-use scatter_gather_grpc::schema_specific;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use schema_specific::orderbook::{
+    use scatter_gather_grpc::schema_specific::orderbook::{
         self,
-        Summary, orderbook_aggregator_client::OrderbookAggregatorClient,
+        orderbook_aggregator_client::OrderbookAggregatorClient,
     };
     use std::time::Instant;
     const ADDRESS: &str = "http://[::1]:54001";
