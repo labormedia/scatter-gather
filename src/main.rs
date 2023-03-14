@@ -31,17 +31,15 @@ mod benches;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
-    let config_binance: ServerConfig = ServerConfig {
+    let config_binance: ServerConfig = ServerConfig { // handler: binance_interceptor
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         init_handle: None,
-        // handler: binance_interceptor
     };
-    let config_bitstamp: ServerConfig = ServerConfig { 
+    let config_bitstamp: ServerConfig = ServerConfig {  // handler: bitstamp_interceptor
         url: String::from("wss://ws.bitstamp.net"), 
         prefix: String::from("wss://"), 
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
-        // handler: bitstamp_interceptor
     };
 
     let binance = WebSocketsMiddleware::new(config_binance).await ;
@@ -58,13 +56,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 
-    let grpc_config: ServerConfig = ServerConfig { 
+    let grpc_config: ServerConfig = ServerConfig { // handler: Interceptors::Depth
         url: String::from("[::1]:54001"), 
         prefix: String::from("http://"), 
         init_handle: None, 
-        // handler: Interceptors::Depth
     };
-
 
     let grpc = GrpcMiddleware::new(grpc_config);
 
@@ -79,29 +75,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut ws_pool: Pool<WebSocketsMiddleware, Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default()); 
     let mut grpc_pool: Pool<GrpcMiddleware,Interceptors> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
 
-
     grpc_pool.inject_connection(grpc);
-
 
     ws_pool.collect_streams(Box::pin(binance_intercepted));
     ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
-    // ws_pool.local_streams
-    //     .map(|interceptor| ;
-
-
-    // grpc_pool.intercept_stream().await;
-    // let internal_snapshot = std::time::Instant::now();Haha
     match grpc_pool.connect().await {
         Poll::Ready(conn) => {
             println!("Buffering.");
             let mut conn_lock = conn.lock().await;
-            // let mut state = &conn_lock.state.clone();
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
                 #[cfg(debug_assertions)]
                 println!("State: {:?}", conn_lock.state);
-                // println!("State: {:?}", conn_lock.state);
                 let update_point: (Vec<Level>, Vec<Level>) = match intercepted
                 {
                     Interceptors::Binance(point) => {
@@ -213,7 +199,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     asks: new_asks
                 };
             
-                // println!("New State: {:?}", new_state);
                 conn_lock
                     .write
                     .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(
