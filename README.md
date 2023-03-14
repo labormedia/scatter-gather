@@ -13,17 +13,17 @@ cargo build --all --examples
 cargo run --example
 cargo run --example pool-to-grpc
 ```
-# Build example proyect.
+# Build example project.
 ```
 cargo build --release --bins
 ```
-# Run example gRPC server.
+# Run example gRPC server (optimized).
 ```
-cargo run --bin server
+cargo run --release --bin server
 ```
 # Run example gRPC client. (Communicates with the server)
 ```
-cargo run --bin client
+cargo run --release --bin client
 ```
 
 # Project Structure
@@ -35,4 +35,4 @@ cargo run --bin client
 ├── examples        : Example use cases\
 ├── middleware      : Defines specific interceptors, helpers and utilities.\
 ├── src             : Generic API\
-└── Cargo.toml      : Project Manifest\
+└── Cargo.toml      : Project Manifest
