@@ -157,7 +157,7 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
 
     fn poll(
         self,
-        cx: &mut std::task::Context<'_>,
+        _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<ConnectionHandlerOutEvent<Connection>> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
@@ -166,7 +166,7 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
             source_type: ServerConfig {
                 url: self.config.url.clone(),
                 prefix: self.config.prefix.clone(),
-                init_handle: self.config.init_handle.clone(),
+                init_handle: self.config.init_handle,
             },
         };
         let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);

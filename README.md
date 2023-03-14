@@ -12,9 +12,17 @@ cargo build --all --examples
 cargo run --example
 cargo run --example pool-to-grpc
 ```
-# Run project
+# Build example proyect.
 ```
-cargo run
+cargo build --release --bins
+```
+# Run example gRPC server.
+```
+cargo run --bin server
+```
+# Run example gRPC client. (Communicates with the server)
+```
+cargo run --bin client
 ```
 
 # Project Structure

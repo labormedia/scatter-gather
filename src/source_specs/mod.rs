@@ -1,20 +1,9 @@
-use scatter_gather_core::{
-    middleware_specs::Interceptor, 
-    connection::{
-        ConnectionHandler,
-        ConnectionHandlerInEvent,
-        ConnectionHandlerOutEvent
-    }
-};
+use scatter_gather_core::middleware_specs::Interceptor;
 pub mod binance;
 pub mod bitstamp;
 use serde::{
     Serialize,
     Deserialize,
-};
-use tungstenite::Message;
-use futures::{
-    task::Poll
 };
 use std::fmt::Debug;
 
@@ -25,12 +14,6 @@ pub trait Depth<T>: Send + Sync {
     fn exchange(self) -> String;
     fn get_bids(self) -> Vec<T>;
     fn get_asks(self) -> Vec<T>;
-}
-
-impl<T: Send + 'static + Default> Debug for Box<dyn Depth<T>> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Depth: {:?}", self)
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default, Clone)]
@@ -54,7 +37,7 @@ pub mod helpers {
         let str_val = String::deserialize(input)?;
         str_val.parse::<f64>().map_err(de::Error::custom)
     }
-    pub fn check_json<'a, D, T>(input: D, source_type: T) -> Result<String, D::Error>
+    pub fn check_json<'a, D, T>(input: D, _source_type: T) -> Result<String, D::Error>
     where
         D: Deserializer<'a>
     {

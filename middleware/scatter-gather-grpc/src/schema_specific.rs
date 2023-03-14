@@ -1,30 +1,11 @@
-use std::iter::Sum;
-use std::thread::JoinHandle;
-use std::{
-    time,
-    thread,
-};
-use tokio::
-    {    
-        runtime::Runtime,
+use tokio::  
         sync::{
             Mutex,
-            mpsc::{
-                self, 
-                // Sender,
-                // Receiver
-            },
-            broadcast::{
-                self,
-                channel,
-                Receiver,Sender,
-            },
-        }
-    };
+            broadcast::Sender,
+        };
 use tokio_stream::{
     wrappers::{
         BroadcastStream,
-        ReceiverStream
     },
     StreamExt,
     Stream
@@ -39,7 +20,6 @@ use tonic::{
         Pin
     }
 };
-use futures::FutureExt;
 use orderbook::orderbook_aggregator_server::{
     OrderbookAggregator,
     OrderbookAggregatorServer,
@@ -55,9 +35,7 @@ pub mod orderbook {
     tonic::include_proto!("orderbook"); // The string specified here must match the proto package name
 }
 
-impl Eq for Level {
-
-}
+impl Eq for Level {}
 
 impl PartialOrd for Level {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -127,7 +105,7 @@ impl OrderbookAggregator for OrderBook {
         let mut inner  = stream.into_inner();
         while let Some(check) = inner.next().await {
             match self.rx.send(check) {
-                Ok(a) => {},
+                Ok(_a) => {},
                 Err(e) => {
                     println!("---------------------------- Dropping frame: {:?}", e);
                 }
@@ -159,8 +137,9 @@ pub fn server(address: &str, inner: OrderBook) -> Result<(), Box<dyn std::error:
     #[cfg(debug_assertions)]
     println!("Starting service.");
     let service = OrderbookAggregatorServer::new(inner);
-    // let rt = Runtime::new()?;
-    tokio::spawn(async {
+    #[cfg(debug_assertions)]
+    println!("Address: {:?}", address);
+    tokio::spawn(async move {
         #[cfg(debug_assertions)]
         println!("Building server...");
         Server::builder()

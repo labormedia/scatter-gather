@@ -109,13 +109,13 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
         Ok(())
     }
 
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         Ok(())
     }
 
     fn poll(
-            mut self,
-            cx: &mut std::task::Context<'_>,
+            self,
+            _cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<Self::OutEvent> 
     {
         let connection: Connection = Connection {
@@ -123,7 +123,7 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
             source_type: ServerConfig {
                 url: self.config.url.clone(),
                 prefix: self.config.prefix.clone(),
-                init_handle: self.config.init_handle.clone(),
+                init_handle: self.config.init_handle,
             },
         };        
         let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);

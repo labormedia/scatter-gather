@@ -1,15 +1,3 @@
-use futures::{
-    Stream,
-    stream::{
-        SplitSink,
-    }
-};
-
-// #[derive(Serialize, Deserialize)]
-// struct dummy {
-//     i: i32
-// }
-use super::connection::ConnectionHandler;
 pub trait Interceptor: Send {
     type Input;
     type Output;

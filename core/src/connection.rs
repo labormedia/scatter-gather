@@ -91,7 +91,7 @@ impl<'b> ConnectionHandler<'b> for Connection {
 
     fn poll(
             self,
-            cx: &mut Context<'_>,
+            _cx: &mut Context<'_>,
         ) -> Poll<Self::OutEvent> 
     {
         #[cfg(debug_assertions)]
@@ -105,7 +105,7 @@ impl<'b> ConnectionHandler<'b> for Connection {
         Ok(())
     }
 
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         Ok(())
     }
     fn as_any(&self) -> &dyn std::any::Any {

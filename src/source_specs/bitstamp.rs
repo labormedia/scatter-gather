@@ -3,13 +3,12 @@ use super::{
     Interceptor,
     Level
 };
-use scatter_gather_core::connection::{ConnectionHandler, self, ConnectionHandlerOutEvent, ConnectionHandlerInEvent};
+use scatter_gather_core::connection::{ConnectionHandler, self};
 use serde_json;
 use serde::{
     Serialize,
     Deserialize,
 };
-use futures::Future;
 use tungstenite::Message;
 use std::task::Poll;
 
@@ -28,12 +27,6 @@ pub struct Data {
     asks: Vec<Level>,
 }
 
-#[derive(Debug)]
-enum CustomDepthInEvent {
-    Message(String),
-    Error(Box<dyn std::error::Error + Send>)
-}
-
 impl BitstampDepthInterceptor {
     pub fn new() -> Self {
         Self::default()
@@ -41,22 +34,12 @@ impl BitstampDepthInterceptor {
     
 }
 
-fn interceptor_to_pb(data: BitstampDepthInterceptor) -> (String, Vec<Level>, Vec<Level>) {
-    let mut a = Vec::new();
-    a.clone_from_slice(&data.data.asks);
-    let mut b = Vec::new();
-    b.clone_from_slice(&data.data.bids);
-    let exchange = data.exchange().clone();
-
-    (exchange, b, a)
-}
-
 impl Depth<Level> for BitstampDepthInterceptor {
     fn level(self) -> (String, Vec<Level>, Vec<Level>) {
         let mut a = Vec::new();
-        let _ = a.extend_from_slice(&self.data.asks);
+        a.extend_from_slice(&self.data.asks);
         let mut b = Vec::new();
-        let _ = b.extend_from_slice(&self.data.bids);
+        b.extend_from_slice(&self.data.bids);
 
         (self.exchange(), b, a)
     }
@@ -90,8 +73,7 @@ impl Interceptor for BitstampDepthInterceptor {
         }
     }
     fn intercept(input: Self::Input) -> BitstampDepthInterceptor {
-        let a = Self::helper(input);
-        a
+        Self::helper(input)
     }
 }
 
@@ -100,17 +82,17 @@ impl ConnectionHandler<'_> for BitstampDepthInterceptor {
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
-        mut self,
-        cx: &mut std::task::Context<'_>,
+        self,
+        _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent>
     {
         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
         Poll::Pending
     }
-    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
+    fn inject_event(&mut self, _event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
         Ok(())
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -118,11 +100,3 @@ impl ConnectionHandler<'_> for BitstampDepthInterceptor {
     }
 }
 
-impl Future for BitstampDepthInterceptor {
-    type Output = &'static dyn Depth<Level>;
-
-    fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        self.inject_event(ConnectionHandlerInEvent::Connect);
-        Poll::Pending
-    }
-}

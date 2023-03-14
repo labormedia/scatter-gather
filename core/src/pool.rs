@@ -1,5 +1,3 @@
-use crate::middleware_specs::{ServerConfig};
-
 /// Pool Connection is initialized with the handler defined 
 /// for the specific Connection::source_type::handler.
 /// 
@@ -7,26 +5,20 @@ use crate::middleware_specs::{ServerConfig};
 use super::{
     Executor,
     connection::{
-        Connection,
         ConnectionId,
         ConnectionHandler,
-        ConnectionHandlerInEvent,
         ConnectionHandlerOutEvent
     },
 };
 use std::{
     collections::HashMap,
     pin::Pin, 
-    any::type_name,
     fmt::Debug,
-    sync::{
-        Arc
-    },
+    sync::Arc,
     hash::{
         Hash,
         Hasher
     },
-    ops::AddAssign
 };
 use futures::{
     channel::mpsc,
@@ -77,16 +69,16 @@ impl<T: for <'a> ConnectionHandler<'a>> Debug for PoolEvent<T> {
     }
 }
 
-impl<'b, T: for <'a> ConnectionHandler<'a>> PoolEvent<T> {
+impl<T: for <'a> ConnectionHandler<'a>> PoolEvent<T> {
     fn notify_event<'a>(
         &'a self, 
         mut events: mpsc::Sender<&'a Self>
     ) -> Result<(), mpsc::TrySendError<&Self>>
     {
         match self {
-            PoolEvent::ConnectionEstablished(conn) => events.try_send(self),
-            PoolEvent::ConnectionClosed(conn) => events.try_send(self),
-            PoolEvent::ConnectionEvent(conn) => events.try_send(self),
+            PoolEvent::ConnectionEstablished(_conn) => events.try_send(self),
+            PoolEvent::ConnectionClosed(_conn) => events.try_send(self),
+            PoolEvent::ConnectionEvent(_conn) => events.try_send(self),
             PoolEvent::Custom => {
                 #[cfg(debug_assertions)]
                 println!("Custom assertion for PoolEvent : {:?}", self);
@@ -101,24 +93,20 @@ pub struct PoolConfig {
 }
 
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
-    pool_id: usize,
+    _pool_id: usize,
     counters: PoolConnectionCounters,
-    pending: HashMap<usize, PendingConnection<T>>,
-    established: HashMap<usize, EstablishedConnection<T>>,
+    _pending: HashMap<usize, PendingConnection<T>>,
+    _established: HashMap<usize, EstablishedConnection<T>>,
     next_connection_id: ConnectionId,
     // This spawner is for connections bounded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type U
     pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
-    pending_connection_events_tx: mpsc::Sender<PendingConnection<T>>,
-    pending_connection_events_rx: mpsc::Receiver<PendingConnection<T>>,
+    _pending_connection_events_tx: mpsc::Sender<PendingConnection<T>>,
+    _pending_connection_events_rx: mpsc::Receiver<PendingConnection<T>>,
     established_connection_events_tx: mpsc::Sender<EstablishedConnection<T>>,
     established_connection_events_rx: mpsc::Receiver<EstablishedConnection<T>>,
-}
-
-fn type_of<T>(_: T) -> &'static str {
-    type_name::<T>()
 }
 
 impl<'b, T, U> Pool<T, U>
@@ -127,22 +115,22 @@ T: for <'a> ConnectionHandler<'a> + Debug + Send + Sync,
 // T: for <'a> ConnectionHandler<'a> + Debug + Sync + for <'a> ConnectionHandler<'a, OutEvent = T::<Self, 'a>>,
 U: Send + 'static + std::fmt::Debug
 {
-    pub fn new<'a>(pool_id: usize, config: PoolConfig, limits: PoolConnectionLimits) -> Pool<T, U> {
-        let (pending_connection_events_tx, pending_connection_events_rx) =
+    pub fn new(_pool_id: usize, config: PoolConfig, _limits: PoolConnectionLimits) -> Pool<T, U> {
+        let (_pending_connection_events_tx, _pending_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         let (established_connection_events_tx, established_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         Pool {
-            pool_id,
+            _pool_id,
             counters: PoolConnectionCounters::default() ,
-            pending: HashMap::new(),
-            established: HashMap::new(),
+            _pending: HashMap::new(),
+            _established: HashMap::new(),
             next_connection_id: ConnectionId::new(0),
             local_spawns: FuturesUnordered::new(),
             local_streams: SelectAll::new(),
             executor: None,
-            pending_connection_events_tx,
-            pending_connection_events_rx,
+            _pending_connection_events_tx,
+            _pending_connection_events_rx,
             established_connection_events_tx,
             established_connection_events_rx,
         }
@@ -162,7 +150,7 @@ U: Send + 'static + std::fmt::Debug
     }
     pub fn inject_connection(&mut self, conn: impl Future<Output = T> + Send + 'static) {
         self.spawn(Box::pin(conn));
-        self.counters.pending_incoming = self.counters.pending_incoming + 1;
+        self.counters.pending_incoming += 1;
     }
 
     pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
@@ -175,10 +163,10 @@ U: Send + 'static + std::fmt::Debug
             Poll::Ready(event) => { 
                 #[cfg(debug_assertions)]
                 println!("Poll Ready... : {event:?}");
-                return match event {
+                match event {
                     ConnectionHandlerOutEvent::ConnectionEstablished(pool_conn) => {
                         let a = pool_conn.state;
-                        return Poll::Ready(a);
+                        Poll::Ready(a)
                     }
                     _ => {
                         Poll::Pending
@@ -196,14 +184,10 @@ U: Send + 'static + std::fmt::Debug
 
     pub async fn intercept_stream(&mut self) {
         loop {
-            match self.local_streams.next().await {
-                Some(a) => {
-                    #[cfg(debug_assertions)]
-                    println!("Received: {:?}", a);
-                },
-                _ => {}
-
-            }
+            if let Some(a) = self.local_streams.next().await {
+                #[cfg(debug_assertions)]
+                println!("Received: {:?}", a);
+            } else {}
         }
            
     }
@@ -218,31 +202,26 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.next()
     }
 
-    pub async fn poll(mut self, cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
+    pub async fn poll(mut self, _cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
     {
         #[cfg(debug_assertions)]
         println!("Entering Pool poll.");
-        return loop {
-            while let Some(s) = self.local_spawns.next().await {
-                let pool_connection = PoolConnection {
-                    id: self.next_connection_id(),
-                    state: Arc::new(Mutex::new(s))
-                };
-                // let pool = self.established.entry(pool_connection.id).or_insert(EstablishedConnection(&pool_connection));
-                self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
-                self.counters.established_incoming = self.counters.established_incoming + 1;
-                self.counters.pending_incoming = self.counters.pending_incoming - 1;             
+        while let Some(s) = self.local_spawns.next().await {
+            let pool_connection = PoolConnection {
+                id: self.next_connection_id(),
+                state: Arc::new(Mutex::new(s))
             };
-    
-            if let Some(EstablishedConnection(t)) = self.established_connection_events_rx.next().await {
-                
-                // self.established.insert(t.id, EstablishedConnection(&t));
-                break Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(t))
-            } else {
-                break Poll::Pending
-            };
+            // let pool = self.established.entry(pool_connection.id).or_insert(EstablishedConnection(&pool_connection));
+            self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
+            self.counters.established_incoming += 1;
+            self.counters.pending_incoming -= 1;             
         };
 
+        if let Some(EstablishedConnection(t)) = self.established_connection_events_rx.next().await {
+            Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(t))
+        } else {
+            Poll::Pending
+        }
     }
 }
 
@@ -253,36 +232,36 @@ pub struct EstablishedConnection<T: for<'a> ConnectionHandler<'a>> (PoolConnecti
 #[derive(Debug, Clone, Default)]
 pub struct PoolConnectionCounters {
     /// The effective connection limits.
-    limits: PoolConnectionLimits,
+    _limits: PoolConnectionLimits,
     /// The current number of incoming connections.
     pending_incoming: u32,
     /// The current number of outgoing connections.
-    pending_outgoing: u32,
+    _pending_outgoing: u32,
     /// The current number of established inbound connections.
     established_incoming: u32,
     /// The current number of established outbound connections.
-    established_outgoing: u32,
+    _established_outgoing: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct PoolConnectionLimits {
-    max_pending_incoming: Option<u32>,
-    max_pending_outgoing: Option<u32>,
-    max_established_incoming: Option<u32>,
-    max_established_outgoing: Option<u32>,
-    max_established_per_peer: Option<u32>,
-    max_established_total: Option<u32>,
+    _max_pending_incoming: Option<u32>,
+    _max_pending_outgoing: Option<u32>,
+    _max_established_incoming: Option<u32>,
+    _max_established_outgoing: Option<u32>,
+    _max_established_per_peer: Option<u32>,
+    _max_established_total: Option<u32>,
 }
 
 impl Default for PoolConnectionLimits {
     fn default() -> Self {
         Self {
-            max_pending_incoming: Some(2),
-            max_pending_outgoing: Some(2),
-            max_established_incoming: Some(4),
-            max_established_outgoing: Some(4),
-            max_established_per_peer: Some(4),
-            max_established_total: Some(4),
+            _max_pending_incoming: Some(2),
+            _max_pending_outgoing: Some(2),
+            _max_established_incoming: Some(4),
+            _max_established_outgoing: Some(4),
+            _max_established_per_peer: Some(4),
+            _max_established_total: Some(4),
         }
     }
 }

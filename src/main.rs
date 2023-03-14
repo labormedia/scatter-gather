@@ -10,12 +10,10 @@ use scatter_gather_core::{
     },
     connection::ConnectionHandlerOutEvent
 };
-use scatter_gather_websockets::{WebSocketsMiddleware, ConnectionHandlerError};
+use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather_grpc::{
     GrpcMiddleware,
     schema_specific::{
-        self, 
-        OrderBook, 
         orderbook::{
             Summary, 
             Level
@@ -24,24 +22,12 @@ use scatter_gather_grpc::{
 };
 use scatter_gather::source_specs::{
     Depth,
-    Level as DepthLevel,
     Interceptors,
     binance::BinanceDepthInterceptor,
-    bitstamp::BitstampDepthInterceptor, self,
+    bitstamp::BitstampDepthInterceptor,
 };
-use tonic::service::interceptor;
-use std::{
-    pin::Pin,
-    any::type_name,
-    task::Context,
-    task::Poll, iter::Sum, collections::VecDeque
-};
-use tokio::runtime::Runtime;
-
-fn type_of<T>(_: T) -> &'static str {
-    type_name::<T>()
-}
-
+use std::task::Poll;
+mod benches;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
@@ -113,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             // let mut state = &conn_lock.state.clone();
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
-
+                #[cfg(debug_assertions)]
                 println!("State: {:?}", conn_lock.state);
                 // println!("State: {:?}", conn_lock.state);
                 let update_point: (Vec<Level>, Vec<Level>) = match intercepted
@@ -206,7 +192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 };
                 let _cumulative_state = if conn_lock.state.len() > 3 {
                     conn_lock.state.pop_back().expect("Couldn't access history.").clone()
-                } else if conn_lock.state.len() > 0 {
+                } else if !conn_lock.state.is_empty() {
                     conn_lock.state.back().expect("Couldn't access history.").clone()
                 } else {
                     Summary::default()
@@ -216,13 +202,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 history.asks.sort();
                 let new_bids: Vec<Level> = history.bids.into_iter().rev().take(10).collect();
                 let new_asks: Vec<Level> = history.asks.into_iter().take(10).collect();
-                let spread = if new_bids.len() > 0 && new_asks.len() > 0 {
+                let spread = if !new_bids.is_empty() && !new_asks.is_empty() {
                     new_asks[0].price - new_bids[0].price 
                 } else {
                     0.0
                 };
                 let new_state = Summary {
-                    spread: spread,
+                    spread,
                     bids: new_bids ,
                     asks: new_asks
                 };
@@ -244,16 +230,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         Poll::Pending => {}
     };
     println!("Connected ?");
-    // grpc_pool.connect().await;
-
-    // grpc_pool.intercept_stream().await;
-    // let pool_config2 = PoolConfig {
-    //     task_event_buffer_size: 1
-    // };
-    // let mut grpc_pool: Pool<GrpcMiddleware<Interceptors>, Interceptors> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
-
-    // grpc_pool.collect_streams(Box::pin(ws_pool.local_streams));
-
 
     Ok(())
     

@@ -21,7 +21,6 @@
 use super::{
     Depth,
     Interceptor,
-    helpers,
     Level
 };
 use serde::{
@@ -44,12 +43,6 @@ pub struct BinanceDepthInterceptor {
 use scatter_gather_core::connection::{self, ConnectionHandler, ConnectionHandlerOutEvent, ConnectionHandlerInEvent};
 use std::task::Poll;
 use tungstenite::Message;
-
-#[derive(Debug)]
-enum CustomDepthInEvent {
-    Message(String),
-    Error(Box<dyn std::error::Error + Send>)
-}
 
 impl BinanceDepthInterceptor {
     pub fn new() -> Self {
@@ -107,8 +100,8 @@ impl ConnectionHandler<'_> for BinanceDepthInterceptor {
     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
     fn poll(
-        mut self,
-        cx: &mut std::task::Context<'_>,
+        self,
+        _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::OutEvent> 
     {
         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
@@ -132,8 +125,8 @@ impl ConnectionHandler<'_> for BinanceDepthInterceptor {
 impl Future for BinanceDepthInterceptor {
     type Output = &'static dyn Depth<Level>;
 
-    fn poll(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        self.inject_event(ConnectionHandlerInEvent::Connect);
+    fn poll(mut self: std::pin::Pin<&mut Self>, _cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        self.inject_event(ConnectionHandlerInEvent::Connect).expect("Couldn't inject event.");
         Poll::Pending
     }
 }
