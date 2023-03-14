@@ -10,7 +10,7 @@ use scatter_gather_core::{
     },
     connection::ConnectionHandlerOutEvent
 };
-use scatter_gather_websockets::WebSocketsMiddleware;
+use scatter_gather_websockets::{WebSocketsMiddleware, ConnectionHandlerError};
 use scatter_gather_grpc::{
     GrpcMiddleware,
     schema_specific::{
@@ -34,7 +34,7 @@ use std::{
     pin::Pin,
     any::type_name,
     task::Context,
-    task::Poll, iter::Sum
+    task::Poll, iter::Sum, collections::VecDeque
 };
 use tokio::runtime::Runtime;
 
@@ -110,10 +110,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         Poll::Ready(conn) => {
             println!("Buffering.");
             let mut conn_lock = conn.lock().await;
-            let mut state: Summary = Summary::default();
+            // let mut state = &conn_lock.state.clone();
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
-                let update_point: (Vec<Level>, Vec<Level>) = match intercepted {
+
+                println!("State: {:?}", conn_lock.state);
+                // println!("State: {:?}", conn_lock.state);
+                let update_point: (Vec<Level>, Vec<Level>) = match intercepted
+                {
                     Interceptors::Binance(point) => {
                         let p = point.level();
                         let exchange = p.0;
@@ -186,14 +190,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                         )
                     }
                 };
+                conn_lock.state.push_front(Summary {
+                    spread: 0.0,
+                    bids: update_point.0,
+                    asks: update_point.1
+                });
+                let mut history = if conn_lock.state.len() > 2 {
+                    conn_lock.state.iter().fold(Summary::default(), |mut acc, x| {
+                        acc.bids.extend(x.bids.clone());
+                        acc.asks.extend(x.asks.clone());
+                        acc
+                    })
+                } else {
+                    Summary::default()
+                };
+                let _cumulative_state = if conn_lock.state.len() > 3 {
+                    conn_lock.state.pop_back().expect("Couldn't access history.").clone()
+                } else if conn_lock.state.len() > 0 {
+                    conn_lock.state.back().expect("Couldn't access history.").clone()
+                } else {
+                    Summary::default()
+                };
+                          
+                history.bids.sort();
+                history.asks.sort();
+                let new_bids: Vec<Level> = history.bids.into_iter().rev().take(10).collect();
+                let new_asks: Vec<Level> = history.asks.into_iter().take(10).collect();
+                let spread = if new_bids.len() > 0 && new_asks.len() > 0 {
+                    new_asks[0].price - new_bids[0].price 
+                } else {
+                    0.0
+                };
+                let new_state = Summary {
+                    spread: spread,
+                    bids: new_bids ,
+                    asks: new_asks
+                };
+            
+                // println!("New State: {:?}", new_state);
                 conn_lock
                     .write
                     .send(ConnectionHandlerOutEvent::ConnectionEvent(Ok(
-                        Summary {
-                            spread: 0.0,
-                            bids: update_point.0,
-                            asks: update_point.1
-                        }
+                        new_state
                     )))
                     .await?;
                 conn_lock

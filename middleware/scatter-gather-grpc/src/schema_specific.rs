@@ -55,6 +55,30 @@ pub mod orderbook {
     tonic::include_proto!("orderbook"); // The string specified here must match the proto package name
 }
 
+impl Eq for Level {
+
+}
+
+impl PartialOrd for Level {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+
+        let ord = if self.price < other.price {
+            std::cmp::Ordering::Less
+        } else if self.price == other.price {
+            std::cmp::Ordering::Equal
+        } else {
+            std::cmp::Ordering::Greater
+        };
+        Some(ord)
+    }
+}
+
+impl Ord for Level {
+    fn cmp(&self, other:&Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).expect("Could not apply ordering.")
+    }
+}
+
 #[derive(Debug)]
 pub struct OrderBook
 {
@@ -102,8 +126,6 @@ impl OrderbookAggregator for OrderBook {
         println!("Starting book_summary_feed");
         let mut inner  = stream.into_inner();
         while let Some(check) = inner.next().await {
-            #[cfg(debug_assertions)]
-            println!("Check : {:?}", check);
             match self.rx.send(check) {
                 Ok(a) => {},
                 Err(e) => {

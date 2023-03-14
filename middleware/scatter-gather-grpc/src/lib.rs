@@ -24,7 +24,7 @@ use futures::{
         SplitSink, 
         SplitStream, FuturesUnordered
     }, 
-    io::Empty
+    io::Empty, SinkExt
 };
 use schema_specific::orderbook::{
     Summary, orderbook_aggregator_client::OrderbookAggregatorClient,
@@ -65,6 +65,7 @@ use tokio_stream::{
     StreamExt,
     Stream
 };
+use std::collections::VecDeque;
 
 pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
@@ -73,8 +74,9 @@ const ADDRESS: &str = "http://[::1]:54001";
 pub struct GrpcMiddleware {
     pub config: ServerConfig,
     pub write: mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
-    read: mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
-    client: OrderbookAggregatorClient<Channel>
+    pub read: mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
+    client: OrderbookAggregatorClient<Channel>,
+    pub state: VecDeque<Summary>
 }
 
 
@@ -99,24 +101,25 @@ impl GrpcMiddleware {
             config,
             write,
             read,
-            client: client_channel
+            client: client_channel,
+            state: VecDeque::with_capacity(10)
         };
         Ok(i)
     }
 
     pub async fn client_buf(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        #[cfg(debug_assertions)]
-        println!("Starting Client (Buffer).");
+        // #[cfg(debug_assertions)]
+        // println!("Starting Client (Buffer).");
 
         if let Some(ConnectionHandlerOutEvent::ConnectionEvent(Ok(msg))) = self.read.recv().await {
-            #[cfg(debug_assertions)]
-            println!("Received while in client_buf: {:?}", msg);
+            // #[cfg(debug_assertions)]
+            // println!("Received while in client_buf: {:?}", msg);
             let input = futures::stream::iter([msg]).take(1);
             let request = tonic::Request::new(input);
             self.client.book_summary_feed(request).await.expect("Cannot buffer book_summary_feed.");
         };
-        #[cfg(debug_assertions)]
-        println!("Leaving client_buf.");
+        // #[cfg(debug_assertions)]
+        // println!("Leaving client_buf.");
         Ok(())
     }
 

@@ -176,7 +176,7 @@ U: Send + 'static + std::fmt::Debug
                 #[cfg(debug_assertions)]
                 println!("Poll Ready... : {event:?}");
                 return match event {
-                    ConnectionHandlerOutEvent::ConnectionEvent(pool_conn) => {
+                    ConnectionHandlerOutEvent::ConnectionEstablished(pool_conn) => {
                         let a = pool_conn.state;
                         return Poll::Ready(a);
                     }
@@ -237,7 +237,7 @@ U: Send + 'static + std::fmt::Debug
             if let Some(EstablishedConnection(t)) = self.established_connection_events_rx.next().await {
                 
                 // self.established.insert(t.id, EstablishedConnection(&t));
-                break Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(t))
+                break Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(t))
             } else {
                 break Poll::Pending
             };
