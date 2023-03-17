@@ -37,11 +37,11 @@ pub struct WebSocketsMiddleware {
 // Implement custom fucntionality for the middleware.
 impl WebSocketsMiddleware {
     pub async fn new(config: ServerConfig) -> WebSocketsMiddleware {
-        Self::spin_up(config).await
+        Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
     
     async fn spin_up(config: ServerConfig) -> 
-        Self
+        Result<Self, Box<dyn std::error::Error>>
     {
         let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
         let (mut write,read) = ws_stream.split();
@@ -57,11 +57,13 @@ impl WebSocketsMiddleware {
                 }
             };
         };
-        Self {
-            config,
-            write,
-            read
-        }
+        Ok(
+            Self {
+                config,
+                write,
+                read
+            }
+        )
     }
 
     pub async fn send(&mut self, msg: String) {
