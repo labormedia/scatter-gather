@@ -92,7 +92,7 @@ impl ConnectionHandler<'_> for BitstampDepthInterceptor {
     fn inject_event(&mut self, _event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
-    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
     fn as_any(&self) -> &dyn std::any::Any {

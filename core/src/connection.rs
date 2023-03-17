@@ -81,7 +81,7 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     ) -> Poll<Self::OutEvent>;
 
     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>>;
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>>;
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>>;
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
@@ -105,7 +105,7 @@ impl<'b> ConnectionHandler<'b> for Connection {
         Ok(())
     }
 
-    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
     fn as_any(&self) -> &dyn std::any::Any {

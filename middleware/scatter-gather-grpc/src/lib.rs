@@ -149,7 +149,7 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
         println!("Injecting event on GrpcMiddleware. {:?}", event);
         Ok(())
     }
-    fn eject_event(& mut self, event: Self::OutEvent) -> Result<(), SendError<ConnectionHandlerOutEvent<Connection>>> {
+    fn eject_event(& mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Ejecting event within GrpcMiddleware. {:?}", event);
         Ok(())

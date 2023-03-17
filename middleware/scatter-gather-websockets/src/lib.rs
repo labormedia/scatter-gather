@@ -109,7 +109,7 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
         Ok(())
     }
 
-    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
 

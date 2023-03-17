@@ -112,7 +112,7 @@ impl ConnectionHandler<'_> for BinanceDepthInterceptor {
         println!("Hello Future! InEvent: {:?}", event);
         Ok(())
     }
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), tokio::sync::mpsc::error::SendError<Self::OutEvent>> {
+    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
         println!("Hello Future! OutEvent: {:?}", event);
         Ok(())
