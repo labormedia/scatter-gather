@@ -18,26 +18,12 @@ use std::{
     thread,
     time
 };
-use futures::{
-    Future,
-    stream::{
-        SplitSink, 
-        SplitStream, FuturesUnordered
-    }, 
-    io::Empty, SinkExt
-};
 use schema_specific::orderbook::{
     Summary, orderbook_aggregator_client::OrderbookAggregatorClient,
 };
 use tonic::{
-    transport::{
-        Server,
-        Channel
-    }, 
-    Request, 
-    Response, 
     Status,
-    codegen::Arc
+    transport::Channel
 };
 // use tokio_stream::wrappers::ReceiverStream;
 use tokio::

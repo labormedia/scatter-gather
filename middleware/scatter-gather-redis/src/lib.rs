@@ -32,4 +32,8 @@ impl RedisMiddleware {
             }
         )
     }
+
+    pub fn conn_clone(self) -> MultiplexedConnection {
+        self.client.clone()
+    }
 }
