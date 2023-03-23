@@ -49,7 +49,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         binance
             .read
             .map(|result| result.unwrap().into_text().unwrap())
-            .map(|text| Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) );
+            .map(|text| {
+                println!("Input test from Binance: {:?}", text);
+                Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) 
+            });
     let bitstamp_intercepted =
         bitstamp
             .read
@@ -96,6 +99,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                         (
                             p.1
                                 .iter()
+                                .filter( |x| {
+                                    x.right != 0.0
+                                } )
                                 .map( |x| {
                                     Level {
                                         exchange: exchange.clone(),
@@ -106,6 +112,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                                 .collect::<Vec<Level>>(),
                             p.2
                                 .iter()
+                                .filter( |x| {
+                                    x.right != 0.0
+                                } )
                                 .map( |x| {
                                     Level {
                                         exchange: exchange.clone(),
