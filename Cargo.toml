@@ -30,11 +30,3 @@ members = [
     "middleware/scatter-gather-websockets",
     "middleware/scatter-gather-redis",
 ]
-
-[[bin]]
-name = "server"
-path = "src/main.rs"
-
-[[bin]]
-name = "client"
-path = "middleware/scatter-gather-grpc/examples/basic_client.rs"

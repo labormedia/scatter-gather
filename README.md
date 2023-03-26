@@ -1,6 +1,6 @@
 ![Edgeworth](Untitled.png "Edgeworth cage.")
 # scatter-gather
-A scatter-gather implementation for financial data acquisition and algorithmic trading.
+A scatter-gather implementation for data acquisition and analysis.
 The scatter-gather model is declared as a state machine of custom future types designed to take max performance out of the architectural pattern of hierarchical state machines, preserving asynchronous properties on the overall pool of transactions.
 
 # Build
@@ -19,11 +19,11 @@ cargo build --release --bins
 ```
 # Run example gRPC server (optimized).
 ```
-cargo run --release --bin server
+cargo run --example ws-to-grpc_example
 ```
 # Run example gRPC client. (Communicates with the server)
 ```
-cargo run --release --bin client
+cargo run --example ws-to-grpc_client
 ```
 
 # Project Structure
