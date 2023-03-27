@@ -3,6 +3,6 @@ pub mod keys_proto {
     include!(concat!(env!("OUT_DIR"), "/keys_proto.rs"));
 }
 
-mod identity;
+pub mod identity;
 pub mod peer_id;
 pub mod xor;
