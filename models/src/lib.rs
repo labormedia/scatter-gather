@@ -5,3 +5,4 @@ pub mod keys_proto {
 
 mod identity;
 pub mod peer_id;
+pub mod xor;

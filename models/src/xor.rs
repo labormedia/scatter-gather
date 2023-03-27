@@ -20,7 +20,7 @@
 
 // use crate::record;
 use multihash::Multihash;
-use peer_id::PeerId;
+use crate::peer_id::PeerId;
 use sha2::digest::generic_array::{typenum::U32, GenericArray};
 use sha2::{Digest, Sha256};
 use std::borrow::Borrow;
