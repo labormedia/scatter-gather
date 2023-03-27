@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use scatter_gather_core::{
     middleware_specs::{
-        ServerConfig, Interceptor,
+        NodeConfig, Interceptor,
     },
     pool::{
         Pool,
@@ -20,7 +20,8 @@ use scatter_gather_grpc::{
         }
     }
 };
-use scatter_gather::source_specs::{
+mod source_specs;
+use source_specs::{
     Depth,
     Interceptors,
     binance::BinanceDepthInterceptor,
@@ -31,12 +32,12 @@ mod benches;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
-    let config_binance: ServerConfig = ServerConfig { // handler: binance_interceptor
+    let config_binance: NodeConfig = NodeConfig { // handler: binance_interceptor
         url : String::from("wss://stream.binance.com:9443/ws/ethbtc@depth@100ms"),
         prefix: String::from("wss://"),
         init_handle: None,
     };
-    let config_bitstamp: ServerConfig = ServerConfig {  // handler: bitstamp_interceptor
+    let config_bitstamp: NodeConfig = NodeConfig {  // handler: bitstamp_interceptor
         url: String::from("wss://ws.bitstamp.net"), 
         prefix: String::from("wss://"), 
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
@@ -59,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 
-    let grpc_config: ServerConfig = ServerConfig { // handler: Interceptors::Depth
+    let grpc_config: NodeConfig = NodeConfig { // handler: Interceptors::Depth
         url: String::from("[::1]:54001"), 
         prefix: String::from("http://"), 
         init_handle: None, 

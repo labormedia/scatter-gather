@@ -8,7 +8,7 @@ use scatter_gather_core::{
         ConnectionHandlerOutEvent,
     },
     middleware_specs::{
-        ServerConfig,
+        NodeConfig,
         Interceptor
     },
 };
@@ -58,7 +58,7 @@ const ADDRESS: &str = "http://[::1]:54001";
 
 #[derive(Debug)]
 pub struct GrpcMiddleware {
-    pub config: ServerConfig,
+    pub config: NodeConfig,
     pub write: mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
     pub read: mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>,
     client: OrderbookAggregatorClient<Channel>,
@@ -67,11 +67,11 @@ pub struct GrpcMiddleware {
 
 
 impl GrpcMiddleware {
-    pub async fn new(config: ServerConfig) -> GrpcMiddleware {
+    pub async fn new(config: NodeConfig) -> GrpcMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
 
-    pub async fn spin_up(config: ServerConfig) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn spin_up(config: NodeConfig) -> Result<Self, Box<dyn std::error::Error>> {
       
         let (write, read): (mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>, mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>) = mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
@@ -149,7 +149,7 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
         let connection: Connection = Connection {
             id : ConnectionId::new(1),
-            source_type: ServerConfig {
+            source_type: NodeConfig {
                 url: self.config.url.clone(),
                 prefix: self.config.prefix.clone(),
                 init_handle: self.config.init_handle,

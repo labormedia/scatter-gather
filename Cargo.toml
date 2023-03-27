@@ -29,4 +29,5 @@ members = [
     "middleware/scatter-gather-grpc",
     "middleware/scatter-gather-websockets",
     "middleware/scatter-gather-redis",
+    "models",
 ]

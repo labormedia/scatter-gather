@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug)]
 pub struct Connection {
     pub id: ConnectionId,
-    pub source_type: ServerConfig,
+    pub source_type: NodeConfig,
     // pub handler: THandler
     // pub handler: THandler
 }

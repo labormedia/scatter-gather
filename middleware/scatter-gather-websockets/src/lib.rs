@@ -1,5 +1,5 @@
 use scatter_gather_core as sgc;
-use scatter_gather_core::middleware_specs::ServerConfig;
+use scatter_gather_core::middleware_specs::NodeConfig;
 use sgc::connection::{
     Connection,
     ConnectionId,
@@ -27,7 +27,7 @@ use std::fmt;
 // Declares the middleware Factory with an associated generic type. 
 #[derive(Debug)]
 pub struct WebSocketsMiddleware {
-    pub config: ServerConfig,
+    pub config: NodeConfig,
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
@@ -36,11 +36,11 @@ pub struct WebSocketsMiddleware {
 
 // Implement custom fucntionality for the middleware.
 impl WebSocketsMiddleware {
-    pub async fn new(config: ServerConfig) -> WebSocketsMiddleware {
+    pub async fn new(config: NodeConfig) -> WebSocketsMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
     
-    async fn spin_up(config: ServerConfig) -> 
+    async fn spin_up(config: NodeConfig) -> 
         Result<Self, Box<dyn std::error::Error>>
     {
         let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
@@ -122,7 +122,7 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
     {
         let connection: Connection = Connection {
             id : ConnectionId::new(0),
-            source_type: ServerConfig {
+            source_type: NodeConfig {
                 url: self.config.url.clone(),
                 prefix: self.config.prefix.clone(),
                 init_handle: self.config.init_handle,

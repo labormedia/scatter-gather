@@ -7,7 +7,10 @@ The scatter-gather model is declared as a state machine of custom future types d
 ```
 cargo build --all --examples
 ```
-
+# Run tests + bench
+```
+cargo test --examples -- --nocapture
+```
 # List of examples to run
 ```
 cargo run --example

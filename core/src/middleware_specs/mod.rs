@@ -7,7 +7,7 @@ pub trait Interceptor: Send {
 }
 
 #[derive(Debug)]
-pub struct ServerConfig {
+pub struct NodeConfig {
     pub url: String,
     pub prefix: String,
     pub init_handle: Option<String>,

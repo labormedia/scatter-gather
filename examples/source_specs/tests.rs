@@ -4,7 +4,7 @@ use std::task::{
 use scatter_gather::source_specs::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 use scatter_gather_core::{
     middleware_specs::{
-        ServerConfig,
+        NodeConfig,
     },
     pool::{
         PoolConfig,
@@ -22,7 +22,7 @@ pub mod orderbook {
 }
 
 fn main() {
-    let grpc_config = ServerConfig {
+    let grpc_config = NodeConfig {
         url: String::from("[::1]:54001"),
         prefix: String::from("http://"),
         init_handle: None,
