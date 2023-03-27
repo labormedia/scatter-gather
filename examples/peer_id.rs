@@ -6,6 +6,8 @@ fn main() {
         let b = PeerId::random();
         let a_key = xor::Key::from(a);
         let b_key = xor::Key::from(b);
-        println!("{} {}",a, a);
+        if let Some(distance) = &a_key.distance(&b_key).ilog2() {
+            println!("{}",distance);
+        };
     }
 }
