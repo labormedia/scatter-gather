@@ -20,6 +20,7 @@ scatter-gather-websockets = { path = "middleware/scatter-gather-websockets" }
 scatter-gather-grpc = { path = "middleware/scatter-gather-grpc" }
 tonic = "0.8"
 prost = "0.11"
+rand = "0.8.5"
 
 [build-dependencies]
 tonic-build = "0.8"
