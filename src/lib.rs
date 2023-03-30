@@ -53,12 +53,17 @@ impl Router {
             .iter()
             .fold( (self.peer_id, Distance::default()), |min, x| {
                 let key_other = Key::from(*x);
-                let new_distance = self.key.distance(&key_other);
-                if min.1 < Key::from(self.peer_id).distance(&key_other) {
-                    min
+                if min.1 == Distance::default() {
+                    (*x, Key::from(self.peer_id).distance(&key_other) )
                 } else {
-                    (*x, new_distance)
+                    let new_distance = self.key.distance(&key_other);
+                    if min.1 < Key::from(self.peer_id).distance(&key_other) {
+                        min
+                    } else {
+                        (*x, new_distance)
+                    }
                 }
+
             }   )
     }
 }
