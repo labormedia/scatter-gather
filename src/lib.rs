@@ -5,10 +5,16 @@ use scatter_gather_models::xor::{
 };
 use rand::prelude::SliceRandom;
 use std::collections::HashMap;
+use uint::*;
 
-pub fn routing(size: usize) -> Result<(Vec<PeerId>, HashMap<PeerId, Vec<PeerId>>), Box<dyn std::error::Error>> {
+construct_uint! {
+    /// 256-bit unsigned integer.
+    pub struct U256(4);
+}
+
+pub fn routing(network_size: usize, router_size: usize) -> Result<(Vec<PeerId>, HashMap<PeerId, Vec<PeerId>>), Box<dyn std::error::Error>> {
     let mut collection: Vec<PeerId> = Vec::new();
-    for _i in 0..size {
+    for _i in 0..network_size {
         collection.push(
                 PeerId::random()
         );
@@ -20,7 +26,7 @@ pub fn routing(size: usize) -> Result<(Vec<PeerId>, HashMap<PeerId, Vec<PeerId>>
             |mut a: HashMap<PeerId, Vec<PeerId>>, x: PeerId|
             {
                 a.insert(x, cloned_collection
-                    .choose_multiple(&mut rand::thread_rng(), 17)
+                    .choose_multiple(&mut rand::thread_rng(), router_size)
                     .cloned()
                     .collect());
                 a
@@ -52,21 +58,14 @@ impl<'a> Router<'a> {
         self
             .peer_list
             .iter()
-            .fold( (self.peer_id, Distance::default()), |min, x| {
+            .fold( (self.peer_id, Distance::MAX), |min, x| {
                 let key_other = Key::from(*x);
-                let acc = if min.1 == Distance::default() {
-                    (*x, search_key.distance(&key_other) )
+                let distance = search_key.distance(&key_other);
+                if min.1 <= distance {
+                    min
                 } else {
-                    let new_distance = search_key.distance(&key_other);
-                    println!("Compare : {:?}", new_distance);
-                    if min.1 < new_distance {
-                        min
-                    } else {
-                        (*x, new_distance)
-                    }
-                };
-                acc
-
+                    (*x, distance)
+                }
             }   )
     }
 }
