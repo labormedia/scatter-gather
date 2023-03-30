@@ -4,8 +4,8 @@ use rand::seq::{SliceRandom, IteratorRandom};
 use scatter_gather_models::peer_id::PeerId;
 use scatter_gather_models::xor;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // generating_random(100_000);
-    // sorting(1_000_000);
+    generating_random(100_000);
+    sorting(1_000_000)?;
     generating_sequential(99_999_000)?;
     let routers = routing(100_000);
     println!("Generating routers, i.e. {:?}", routers);
@@ -87,5 +87,6 @@ fn routing(size: usize) -> Result<Vec<PeerId>, Box<dyn std::error::Error>> {
         );
     let origin = cloned_collection.choose(&mut rand::thread_rng()).unwrap();
     let destiny = cloned_collection.choose(&mut rand::thread_rng()).unwrap();
-    Ok(new_collection.get(origin).unwrap().to_vec())
+    let a = new_collection.get(origin).unwrap().to_vec();
+    Ok(a)
 }

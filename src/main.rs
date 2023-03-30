@@ -18,5 +18,6 @@ use rand::seq::IteratorRandom;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut rng = rand::thread_rng();
+    let routers = scatter_gather::routing(100_000);
     Ok(())
 }
