@@ -30,28 +30,35 @@ pub fn routing(size: usize) -> Result<(Vec<PeerId>, HashMap<PeerId, Vec<PeerId>>
     Ok((cloned_collection, new_collection))
 }
 
-struct Router((PeerId, Vec<PeerId>));
+struct Router {
+    peer_id: PeerId,
+    peer_list: Vec<PeerId>,
+    key: Key<PeerId>
+}
 
 impl Router {
-    fn from(tuple : (PeerId, Vec<PeerId>)) -> Self {
-        Self(tuple)
+    pub fn from(peer_id: PeerId, peer_list:Vec<PeerId>) -> Self {
+        Self { 
+            peer_id, 
+            peer_list, 
+            key: Key::from(peer_id)
+        }
     }
-    fn sort(mut self) {
-        self.0.1.sort();
+    pub fn sort(mut self) {
+        self.peer_list.sort();
     }
-    fn closest(mut self, peer_id: PeerId) -> PeerId {
-        let distance = self
-            .0.1
+    pub fn closest(self, peer_id: PeerId) -> (PeerId, Distance) {
+        self
+            .peer_list
             .iter()
-            .fold( (self.0.0, Distance::default()), |min, x| {
+            .fold( (self.peer_id, Distance::default()), |min, x| {
                 let key_other = Key::from(*x);
-                let compare = Key::from(self.0.0).distance(&key_other);
-                if min.1 < Key::from(self.0.0).distance(&key_other) {
+                let new_distance = self.key.distance(&key_other);
+                if min.1 < Key::from(self.peer_id).distance(&key_other) {
                     min
                 } else {
-                    (*x, compare)
+                    (*x, new_distance)
                 }
-            }   );
-        distance.0
+            }   )
     }
 }
