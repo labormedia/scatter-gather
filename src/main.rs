@@ -17,17 +17,17 @@ use scatter_gather::Router;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut rng = rand::thread_rng();
-    let routers = scatter_gather::routing(100_000, 17)?;
+    let routers = scatter_gather::routing(1_000, 32)?;
     let pool = routers.0;
     let topology = routers.1;
     let origin = pool.choose(&mut rng).unwrap();
     let destiny = pool.choose(&mut rng).unwrap();
-    let mut origin_list = topology.get(&origin.clone()).unwrap().to_vec();
+    let mut origin_list = topology.get(&origin.clone()).expect("Cannot find peer.").to_vec();
 
     let mut closest = Router::from(origin.clone(), &mut origin_list).closest(*destiny);
 
     while &closest.0 != destiny && closest.1.ilog2() != None {
-        let mut closest_list = topology.get(&closest.0.clone()).unwrap().to_vec();
+        let mut closest_list = topology.get(&closest.0.clone()).expect("Cannot find peer.").to_vec();
         closest = Router::from(closest.0.clone(), &mut closest_list).closest(*destiny);
         println!("Distance ilog2 : {:?}", closest.1.ilog2());
     }
