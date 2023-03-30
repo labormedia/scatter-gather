@@ -12,7 +12,7 @@
 // };
 // use std::task::Poll;
 use rand::seq::SliceRandom;
-
+use scatter_gather::Router;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
@@ -21,8 +21,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let pool = routers.0;
     let topology = routers.1;
     let origin = pool.choose(&mut rng).unwrap();
-    let _destiny = pool.choose(&mut rng).unwrap();
-    let a = topology.get(origin).unwrap().to_vec();
-    println!("a : {:?}", a);
+    let destiny = pool.choose(&mut rng).unwrap();
+    let mut origin_list = topology.get(&origin.clone()).unwrap().to_vec();
+
+    let closest = Router::from(origin.clone(), &mut origin_list).closest(*destiny);
+
+
+    println!("Closest to : {:?} is {:?} with distance {:?}", destiny, closest.0, closest.1);
     Ok(())
 }

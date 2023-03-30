@@ -86,7 +86,11 @@ fn routing(size: usize) -> Result<Vec<PeerId>, Box<dyn std::error::Error>> {
             
         );
     let origin = cloned_collection.choose(&mut rand::thread_rng()).unwrap();
-    let destiny = cloned_collection.choose(&mut rand::thread_rng()).unwrap();
-    let a = new_collection.get(origin).unwrap().to_vec();
-    Ok(a)
+    let origin_list = new_collection.get(origin).unwrap().to_vec();
+
+    // let destiny = cloned_collection.choose(&mut rand::thread_rng()).unwrap();
+
+
+
+    Ok(origin_list)
 }
