@@ -89,11 +89,11 @@ mod test_router {
     #[test]
     fn test_routes_generation() {
         use super::*;
-        const router_size: usize = 100;
-        const network_size: usize = 10_000;
+        const ROUTER_SIZE: usize = 100;
+        const NETWORK_SIZE: usize = 10_000;
 
         let mut collection: Vec<PeerId> = Vec::new();
-        for _i in 0..network_size {
+        for _i in 0..NETWORK_SIZE {
             collection.push(
                     PeerId::random()
             );
@@ -102,9 +102,9 @@ mod test_router {
         let mut rng = rand::thread_rng();
         let random_id = collection.choose(&mut rng).expect("No PeerId.").clone();
 
-        let dht = DHT::new().routing(collection, router_size).expect("Cannot generate routing.");
+        let dht = DHT::new().routing(collection, ROUTER_SIZE).expect("Cannot generate routing.");
         let routes: Vec<Route> = dht.routes.get(&random_id).expect("Could not find routes.").clone();
-        let assert = routes
+        let _assert = routes
             .into_iter()
             .map(|x| {
                 let key = Key::from(random_id);
