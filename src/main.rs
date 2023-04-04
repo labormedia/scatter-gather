@@ -30,16 +30,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let dht = scatter_gather::DHT::new().routing(collection, 100)?;
     let origin_list = match dht.routes.get(&origin.clone()) {
         Some(value) => {
-            value
+            value.clone()
         },
         None => panic!("no initial routing.")
     };
     println!("DHT generated.");
-    let initial_peer = Router::from(origin, origin_list.clone()).closest(target);
+    let initial_peer = Router::from(origin, origin_list).closest(target);
     let initial_list = dht.routes
         .get(&initial_peer.0)
         .expect("Cannot find peer.")
-        .clone();
+        .clone()
+        .to_vec();
     let router = Router::from(initial_peer.0, initial_list);
     const K: usize = 3;
     let mut closest = router.k_closest(target, K);

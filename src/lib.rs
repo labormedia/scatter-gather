@@ -23,7 +23,7 @@ construct_uint! {
     pub struct U256(4);
 }
 pub struct DHT {
-    pub routes: HashMap<PeerId, Vec<PeerId>>
+    pub routes: HashMap<PeerId, Vec<Route>>
 }
 
 impl DHT {
@@ -36,11 +36,11 @@ impl DHT {
         let new_collection = collection
                 .iter()
                 .map(|peer_id| {
-                    let router_id = peer_id;
                     let rng = &mut rand::thread_rng();
                     let router_list: Vec<PeerId> = collection
                         .choose_multiple(rng, router_size)
-                        .into_iter()
+                        .par_bridge()
+                        .into_par_iter()
                         .map(|x| {
                             x.clone()
                         })
@@ -51,31 +51,72 @@ impl DHT {
                     x
                 })
                 .fold( HashMap::new(),
-                    | mut a: HashMap<PeerId, Vec<PeerId>>, peer_id: (PeerId, Vec<PeerId>)|
+                    | mut a: HashMap<PeerId, Vec<Route>>, peer_id: (PeerId, Vec<PeerId>)|
                     {
-                        let router_id = peer_id;
+                        let router_id = peer_id.0;
+                        let router_key = Key::from(router_id);
                         let rng = &mut rand::thread_rng();
-                        let router_list = collection
+                        let candidate_list = collection
                             .choose_multiple(rng, router_size)
-                            .into_iter()
+                            .par_bridge()
+                            .into_par_iter()
+                            .map(|peer_id| {
+                                let other_key = Key::from(*peer_id);
+                                Route(*peer_id, router_key.distance(&other_key))
+                            })
+                            .collect();
+                        let router_list = Router::from(router_id, candidate_list)
+                            .k_closest(router_id, 20)
+                            .into_par_iter()
                             .map(|x| {
-                                *x
+                                x
                             })
                             .collect();
 
-                        a.insert(router_id.0, router_list);
+                        a.insert(router_id, router_list);
                         
                         a
                     }
                 )
-                // .collect()
                 ;
         self.routes = new_collection;
         Ok(self)
     }
 }
 
-#[derive(Debug)]
+#[cfg(test)]
+mod test_router {
+    #[test]
+    fn test_routes_generation() {
+        use super::*;
+        const router_size: usize = 100;
+        const network_size: usize = 10_000;
+
+        let mut collection: Vec<PeerId> = Vec::new();
+        for _i in 0..network_size {
+            collection.push(
+                    PeerId::random()
+            );
+        }
+
+        let mut rng = rand::thread_rng();
+        let random_id = collection.choose(&mut rng).expect("No PeerId.").clone();
+
+        let dht = DHT::new().routing(collection, router_size).expect("Cannot generate routing.");
+        let routes: Vec<Route> = dht.routes.get(&random_id).expect("Could not find routes.").clone();
+        let assert = routes
+            .into_iter()
+            .map(|x| {
+                let key = Key::from(random_id);
+                assert!(key.distance(&Key::from(x.0)) == x.1 );
+                x
+            })
+            .collect::<Vec<Route>>()
+            ;
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Route(pub PeerId, pub Distance);
 
 impl<'a> PartialEq for Route {
@@ -108,7 +149,7 @@ impl<'a> Ord for Route {
 
 pub struct Router  {
     router_id: PeerId,
-    pub peer_list: Vec<PeerId>,
+    pub peer_list: Vec<Route>,
     key: Key<PeerId>
 }
 
@@ -141,8 +182,7 @@ impl<'a> Ord for Router {
 }
 
 impl<'a> Router {
-    pub fn from(router_id: PeerId, mut peer_list: Vec<PeerId>) -> Self {
-        peer_list.sort();
+    pub fn from(router_id: PeerId, peer_list: Vec<Route>) -> Self {
         Self { 
             router_id, 
             peer_list, 
@@ -158,12 +198,12 @@ impl<'a> Router {
             .peer_list
             .iter()
             .fold( Route(self.router_id, Distance::MAX), |min, router_id| {
-                let key_other = Key::from(*router_id);
+                let key_other = Key::from(router_id.0);
                 let distance = search_key.distance(&key_other);
                 if min.1 <= distance {
                     min
                 } else {
-                    Route(*router_id, distance)
+                    Route(router_id.0, distance)
                 }
             }   )
     }
@@ -173,14 +213,14 @@ impl<'a> Router {
             .peer_list
             .par_iter()
             .map( |router_id| {
-                let key_other = Key::from(*router_id);
-                Route(*router_id, search_key.distance(&key_other))
+                let key_other = Key::from(router_id.0);
+                Route(router_id.0, search_key.distance(&key_other))
             })
             .collect();
         routes.dedup();
         routes.par_sort();
         routes
-            .into_par_iter()
+            .into_iter()
             .take(k)
             .collect()
     }
