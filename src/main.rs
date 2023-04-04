@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     }
     let origin = collection.choose(&mut rng).unwrap().clone();
     let target = collection.choose(&mut rng).unwrap().clone();
-    let dht = scatter_gather::DHT::new().routing(collection, 20)?;
+    let dht = scatter_gather::DHT::new().routing(collection, 100)?;
     let origin_list = match dht.routes.get(&origin.clone()) {
         Some(value) => {
             value

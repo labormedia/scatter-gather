@@ -22,6 +22,7 @@ tonic = "0.8"
 prost = "0.11"
 rand = "0.8.5"
 uint = "0.9"
+rayon = "1.7"
 
 [build-dependencies]
 tonic-build = "0.8"
@@ -34,3 +35,7 @@ members = [
     "middleware/scatter-gather-redis",
     "models",
 ]
+
+[features]
+default = ["serde"]
+serde = ["scatter-gather-models/serde"]
