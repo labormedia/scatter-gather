@@ -45,26 +45,23 @@ impl DHT {
     }
 }
 
-pub struct Router  {
-    peer_id: PeerId,
-    pub peer_list: Vec<Box<PeerId>>,
-    key: Key<PeerId>
-}
+#[derive(Debug)]
+pub struct Route(pub PeerId, pub Distance);
 
-impl<'a> PartialEq for Router {
+impl<'a> PartialEq for Route {
     fn eq(&self, other: &Self) -> bool {
-        self.peer_id == other.peer_id
+        self.1 == other.1
     }
 }
 
-impl<'a> Eq for Router {}
+impl<'a> Eq for Route {}
 
-impl<'a> PartialOrd for Router {
+impl<'a> PartialOrd for Route {
     fn partial_cmp(&self, other: &Self) -> Option<core_::cmp::Ordering> {
         let ord = 
-            if self.peer_id < other.peer_id {
+            if self.1 < other.1 {
                 std::cmp::Ordering::Less
-            } else if self.peer_id == other.peer_id {
+            } else if self.1 == other.1 {
                 std::cmp::Ordering::Equal
             } else {
                 std::cmp::Ordering::Greater
@@ -73,14 +70,21 @@ impl<'a> PartialOrd for Router {
     }
 }
 
-impl<'a> Ord for Router {
+impl<'a> Ord for Route {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.peer_id.cmp(&other.peer_id)
+        self.1.cmp(&other.1)
     }
 }
 
+pub struct Router  {
+    peer_id: PeerId,
+    pub peer_list: Vec<Box<PeerId>>,
+    key: Key<PeerId>
+}
+
 impl<'a> Router {
-    pub fn from(peer_id: PeerId, peer_list: Vec<Box<PeerId>>) -> Self {
+    pub fn from(peer_id: PeerId, mut peer_list: Vec<Box<PeerId>>) -> Self {
+        peer_list.sort();
         Self { 
             peer_id, 
             peer_list, 
@@ -90,32 +94,37 @@ impl<'a> Router {
     pub fn sort(mut self) {
         self.peer_list.sort();
     }
-    pub fn closest(self, peer_id: PeerId) -> (PeerId, Distance) {
+    pub fn closest(self, peer_id: PeerId) -> Route {
         let search_key = Key::from(peer_id);
         self
             .peer_list
             .iter()
-            .fold( (self.peer_id, Distance::MAX), |min, boxed_router| {
+            .fold( Route(self.peer_id, Distance::MAX), |min, boxed_router| {
                 let key_other = Key::from(**boxed_router);
                 let distance = search_key.distance(&key_other);
                 if min.1 <= distance {
                     min
                 } else {
-                    (**boxed_router, distance)
+                    Route(**boxed_router, distance)
                 }
             }   )
     }
-    pub fn k_closest(mut self, peer_id: PeerId, k: usize) -> Vec<(PeerId, Distance)> {
+    pub fn k_closest(self, peer_id: PeerId, k: usize) -> Vec<Route> {
         let search_key = Key::from(peer_id);
-        self.peer_list.sort();
-        self
+        let mut routes: Vec<Route> = self
             .peer_list
             .iter()
-            .take(k)
-            .fold( Vec::new(), |mut a, boxed_router| {
+            .map( |boxed_router| {
                 let key_other = Key::from(**boxed_router);
-                a.push((**boxed_router, search_key.distance(&key_other)));
-                a
+                Route(**boxed_router, search_key.distance(&key_other))
             })
+            .collect();
+        routes.dedup();
+        routes.sort();
+        routes
+            .into_iter()
+            .take(k)
+            .collect()
+            // .take(k)
     }
 }
