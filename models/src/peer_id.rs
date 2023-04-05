@@ -18,7 +18,6 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-use super::identity;
 use super::identity::PublicKey;
 // use multiaddr::{Multiaddr, Protocol};
 use multihash::{Code, Error, Multihash, MultihashDigest};
@@ -255,7 +254,7 @@ impl FromStr for PeerId {
 
 #[cfg(test)]
 mod tests {
-    use super::{identity, PeerId};
+    use super::{super::identity, PeerId};
 
     #[test]
     fn peer_id_is_public_key() {

@@ -5,17 +5,8 @@ use scatter_gather_models::xor::{
 };
 use rayon::prelude::*;
 // use rand::prelude::SliceRandom;
-use rand::prelude::{
-    SliceRandom,
-    IteratorRandom
-};
-use std::{
-    collections::HashMap,
-    sync::{
-        Arc,
-        Mutex
-    }   
-};
+use rand::prelude::SliceRandom;
+use std::collections::HashMap;
 use uint::*;
 
 construct_uint! {
@@ -58,20 +49,12 @@ impl DHT {
                             .par_bridge()
                             .into_par_iter()
                             .map(|peer_id| {
-                                let other_key = Key::from(*peer_id);
-                                Route(*peer_id, router_key.distance(&other_key))
+                                Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
                             })
                             .collect();
                         let router_list = Router::from(router_id, candidate_list)
-                            .k_closest(router_id, 20)
-                            .into_par_iter()
-                            .map(|x| {
-                                x
-                            })
-                            .collect();
-
+                            .k_closest(router_id, 20);
                         a.insert(router_id, router_list);
-                        
                         a
                     }
                 )
@@ -214,8 +197,8 @@ impl<'a> Router {
                 Route(router_id.0, search_key.distance(&key_other))
             })
             .collect();
-        routes.dedup();
         routes.par_sort();
+        routes.dedup();
         routes
             .into_iter()
             .take(k)
