@@ -6,7 +6,7 @@ A distributed system simulation library with a scatter-gather approach.
 ```
 cargo build --release --all --examples
 ```
-# Run tests + bench (requires "ws-to-grpc_server" example running)
+# Run tests + bench
 ```
 cargo test --release --all -- --nocapture
 ```
