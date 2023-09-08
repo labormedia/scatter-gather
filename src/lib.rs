@@ -23,7 +23,7 @@ impl DHT {
             routes: HashMap::new()
         }
     }
-    pub fn routing(mut self, collection: Vec<PeerId>, pool_size: usize, router_size: usize) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn routing(mut self, collection: Vec<PeerId>, router_size: usize) -> Result<Self, Box<dyn std::error::Error>> {
         self.routes = collection
                 .iter()
                 .map(|peer_id| {
@@ -68,7 +68,6 @@ mod test_router {
     #[test]
     fn test_routes_generation() {
         use super::*;
-        const POOL_SIZE: usize = 20;
         const ROUTER_SIZE: usize = 13;
         const NETWORK_SIZE: usize = 10_000;
 
@@ -82,7 +81,7 @@ mod test_router {
         let mut rng = rand::thread_rng();
         let random_id = collection.choose(&mut rng).expect("No PeerId.").clone();
 
-        let dht = DHT::new().routing(collection, POOL_SIZE, ROUTER_SIZE).expect("Cannot generate routing.");
+        let dht = DHT::new().routing(collection, ROUTER_SIZE).expect("Cannot generate routing.");
         let routes: Vec<Route> = dht.routes.get(&random_id).expect("Could not find routes.").clone();
         let _assert = routes
             .into_iter()
