@@ -21,11 +21,11 @@ cargo build --release --bins
 ```
 # Run example gRPC server (optimized).
 ```
-cargo run --example ws-to-grpc_example
+cargo run --release --example ws-to-grpc_example
 ```
 # Run example gRPC client. (Communicates with the server)
 ```
-cargo run --example ws-to-grpc_client
+cargo run --release --example ws-to-grpc_client
 ```
 
 # Project Structure
