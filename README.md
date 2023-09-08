@@ -8,7 +8,7 @@ cargo build --release --all --examples
 ```
 # Run tests + bench (requires "ws-to-grpc_server" example running)
 ```
-cargo test --release --examples -- --nocapture
+cargo test --release --all -- --nocapture
 ```
 # List of examples to run
 ```
