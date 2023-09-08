@@ -1,7 +1,6 @@
 ![Edgeworth](Untitled.png "Edgeworth cage.")
 # scatter-gather
-A scatter-gather implementation for data acquisition and analysis.
-The scatter-gather model is declared as a state machine of custom future types designed to take max performance out of the architectural pattern of hierarchical state machines, preserving asynchronous properties on the overall pool of transactions.
+A distributed system simulation library with a scatter-gather approach.
 
 # Build
 ```
