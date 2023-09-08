@@ -24,8 +24,10 @@ use rayon::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+    println!("Generating Distributed Hash Table.");
     let mut rng = rand::thread_rng();
-    const NETWORK_SIZE: usize = 100_000;
+    const NETWORK_SIZE: usize = 1_000_000;
+    const ROUTER_SIZE: usize = 7;
     let collection: Vec<PeerId> = (0..NETWORK_SIZE)
         .into_par_iter()
         .map(|_| {
@@ -34,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .collect();
     let origin = collection.choose(&mut rng).unwrap();
     let target = collection.choose(&mut rng).unwrap();
-    let dht = scatter_gather::DHT::new().routing(collection.to_vec(), 7)?;
+    let dht = scatter_gather::DHT::new().routing(collection.to_vec(), ROUTER_SIZE)?;
     let origin_list = match dht.routes.get(&origin.clone()) {
         Some(value) => {
             value.clone()
