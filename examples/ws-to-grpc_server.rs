@@ -13,12 +13,11 @@ use scatter_gather_core::{
 use scatter_gather_websockets::WebSocketsMiddleware;
 use scatter_gather_grpc::{
     GrpcMiddleware,
-    schema_specific::{
+    schema_specific::
         orderbook::{
             Summary, 
             Level
         }
-    }
 };
 mod source_specs;
 use source_specs::{

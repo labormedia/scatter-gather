@@ -85,6 +85,7 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
+// A dummy implementation for complying to the architecture's boundings.
 impl<'b> ConnectionHandler<'b> for Connection {
     type InEvent = ConnectionHandlerInEvent;
     type OutEvent = ConnectionHandlerOutEvent<Connection>;
