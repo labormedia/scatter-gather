@@ -1,5 +1,5 @@
 use scatter_gather_core::{
-    middleware_specs::{
+    middleware_interface::{
         NodeConfig,
     },
     pool::{

@@ -7,7 +7,7 @@ use scatter_gather_core::{
         ConnectionHandlerInEvent,
         ConnectionHandlerOutEvent,
     },
-    middleware_specs::{
+    middleware_interface::{
         NodeConfig,
         Interceptor
     },

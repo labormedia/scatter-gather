@@ -1,5 +1,5 @@
 use scatter_gather_core as sgc;
-use scatter_gather_core::middleware_specs::NodeConfig;
+use scatter_gather_core::middleware_interface::NodeConfig;
 use sgc::connection::{
     Connection,
     ConnectionId,

@@ -1,7 +1,7 @@
 use ::redis::{Client, aio::MultiplexedConnection};
 use scatter_gather_core::{
     connection::ConnectionHandlerOutEvent,
-    middleware_specs::NodeConfig
+    middleware_interface::NodeConfig
 };
 use tokio::sync::mpsc;
 mod redis;

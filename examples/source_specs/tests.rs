@@ -3,7 +3,7 @@ use std::task::{
     Context};
 use scatter_gather::source_specs::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 use scatter_gather_core::{
-    middleware_specs::{
+    middleware_interface::{
         NodeConfig,
     },
     pool::{

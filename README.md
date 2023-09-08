@@ -4,16 +4,16 @@ A distributed system simulation library with a scatter-gather approach.
 
 # Build
 ```
-cargo build --all --examples
+cargo build --release --all --examples
 ```
-# Run tests + bench
+# Run tests + bench (requires "ws-to-grpc_server" example running)
 ```
-cargo test --examples -- --nocapture
+cargo test --release --examples -- --nocapture
 ```
 # List of examples to run
 ```
-cargo run --example
-cargo run --example pool-to-grpc
+cargo run --release --example
+cargo run --release --example pool-to-grpc
 ```
 # Build example project.
 ```
@@ -21,7 +21,7 @@ cargo build --release --bins
 ```
 # Run example gRPC server (optimized).
 ```
-cargo run --release --example ws-to-grpc_example
+cargo run --release --example ws-to-grpc_server
 ```
 # Run example gRPC client. (Communicates with the server)
 ```

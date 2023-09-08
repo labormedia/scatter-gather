@@ -1,4 +1,4 @@
-use scatter_gather_core::middleware_specs::Interceptor;
+use scatter_gather_core::middleware_interface::Interceptor;
 pub mod binance;
 pub mod bitstamp;
 use serde::{

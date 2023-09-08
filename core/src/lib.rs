@@ -3,7 +3,7 @@ use std::{
     pin::Pin
 };
 
-pub mod middleware_specs;
+pub mod middleware_interface;
 pub mod connection;
 pub mod pool;
 
