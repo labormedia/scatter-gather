@@ -53,7 +53,7 @@ impl DHT {
                             })
                             .collect();
                         let router_list = Router::from(router_id, candidate_list)
-                            .k_closest(router_id, 20);
+                            .k_closest(router_id, router_size);
                         a.insert(router_id, router_list);
                         a
                     }
