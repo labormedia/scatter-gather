@@ -33,9 +33,9 @@ impl DHT {
                         .par_bridge()
                         .into_par_iter()
                         .map(|x| {
-                            x.clone()
+                            *x
                         })
-                        .collect();
+                        .collect::<Vec<PeerId>>();
                     (*peer_id, router_list)
                 })
                 .fold( HashMap::new(),
