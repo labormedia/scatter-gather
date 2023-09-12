@@ -13,7 +13,10 @@
 // use std::task::Poll;
 use rand::seq::SliceRandom;
 use scatter_gather_models::peer_id::PeerId;
-use scatter_gather::Router;
+use scatter_gather::{
+    DHT,
+    Router
+};
 use rayon::{
     prelude::*,//{ParallelSliceMut, ParallelBridge},
     iter::{
@@ -36,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .collect();
     let origin = collection.choose(&mut rng).unwrap();
     let target = collection.choose(&mut rng).unwrap();
-    let dht = scatter_gather::DHT::new().routing(collection.to_vec(), ROUTER_SIZE)?;
+    let dht = DHT::new().routing(collection.to_vec(), ROUTER_SIZE)?;
     let origin_list = match dht.routes.get(&origin.clone()) {
         Some(value) => {
             value.clone()
