@@ -1,5 +1,5 @@
 use crate::middleware_interface::*;
-use std::{
+use core::{
     fmt,
     task::{
         Poll,
@@ -44,7 +44,7 @@ impl ConnectionId {
     }
 }
 
-impl std::ops::Add<usize> for ConnectionId {
+impl core::ops::Add<usize> for ConnectionId {
     type Output = Self;
 
     fn add(self, other: usize) -> Self {
