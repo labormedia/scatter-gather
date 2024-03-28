@@ -31,11 +31,13 @@ use source_specs::{
     bitstamp::BitstampDepthInterceptor,
 };
 use tonic::service::interceptor;
+use core::task::{
+    Poll,
+    Context
+};
 use std::{
     pin::Pin,
     any::type_name,
-    task::Context,
-    task::Poll
 };
 use tokio::runtime::Runtime;
 

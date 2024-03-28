@@ -20,13 +20,13 @@ use std::{
         Hasher
     },
 };
+use core::task::{
+    Poll,
+    Context
+};
 use futures::{
     channel::mpsc,
     StreamExt,
-    task::{
-        Poll,
-        Context
-    },
     Future,
     stream::{
         FuturesUnordered,

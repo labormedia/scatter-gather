@@ -1,10 +1,10 @@
 use crate::middleware_interface::*;
+use core::task::{
+    Poll,
+    Context,
+};
 use std::{
     fmt,
-    task::{
-        Poll,
-        Context
-    },
     hash::{
         Hash,
         Hasher

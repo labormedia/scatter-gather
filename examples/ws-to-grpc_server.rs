@@ -26,7 +26,7 @@ use source_specs::{
     binance::BinanceDepthInterceptor,
     bitstamp::BitstampDepthInterceptor,
 };
-use std::task::Poll;
+use core::task::Poll;
 mod benches;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {

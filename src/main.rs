@@ -10,7 +10,6 @@
 //     },
 //     connection::ConnectionHandlerOutEvent
 // };
-// use std::task::Poll;
 use rand::seq::SliceRandom;
 use identity_buckets::peer_id::PeerId;
 use scatter_gather::Router;

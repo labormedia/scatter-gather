@@ -12,8 +12,11 @@ use scatter_gather_core::{
         Interceptor
     },
 };
+use core::task::{
+    Poll,
+    Context
+};
 use std::{
-    task::Poll,
     fmt,
     thread,
     time
@@ -143,8 +146,8 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
 
     fn poll(
         self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<ConnectionHandlerOutEvent<Connection>> 
+        _cx: &mut Context<'_>,
+    ) -> Poll<ConnectionHandlerOutEvent<Connection>> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
         let connection: Connection = Connection {

@@ -16,10 +16,13 @@ use tokio_tungstenite::{
     tungstenite::error::Error
 };
 use tokio::net::TcpStream;
+use core::task::{
+    Poll,
+    Context
+};
 use futures::{
     StreamExt, SinkExt,
     stream::{SplitSink, SplitStream},
-    task::Poll,
 };
 use std::fmt;
 
@@ -117,8 +120,8 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
 
     fn poll(
             self,
-            _cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Self::OutEvent> 
+            _cx: &mut Context<'_>,
+        ) -> Poll<Self::OutEvent> 
     {
         let connection: Connection = Connection {
             id : ConnectionId::new(0),

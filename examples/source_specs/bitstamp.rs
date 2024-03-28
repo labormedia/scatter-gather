@@ -10,7 +10,10 @@ use serde::{
     Deserialize,
 };
 use tungstenite::Message;
-use std::task::Poll;
+use core::task::{
+    Poll,
+    Context
+};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct BitstampDepthInterceptor {
@@ -83,8 +86,8 @@ impl ConnectionHandler<'_> for BitstampDepthInterceptor {
 
     fn poll(
         self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::OutEvent>
+        _cx: &mut Context<'_>,
+    ) -> Poll<Self::OutEvent>
     {
         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
         Poll::Pending

@@ -41,7 +41,10 @@ pub struct BinanceDepthInterceptor {
     a: Vec<Level>
 }
 use scatter_gather_core::connection::{self, ConnectionHandler, ConnectionHandlerOutEvent, ConnectionHandlerInEvent};
-use std::task::Poll;
+use core::task::{
+    Poll,
+    Context
+};
 use tungstenite::Message;
 
 impl BinanceDepthInterceptor {
@@ -101,8 +104,8 @@ impl ConnectionHandler<'_> for BinanceDepthInterceptor {
 
     fn poll(
         self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::OutEvent> 
+        _cx: &mut Context<'_>,
+    ) -> Poll<Self::OutEvent> 
     {
         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
         Poll::Pending
