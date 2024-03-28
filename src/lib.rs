@@ -1,5 +1,5 @@
-use scatter_gather_models::peer_id::PeerId;
-use scatter_gather_models::xor::{
+use buckets::peer_id::PeerId;
+use buckets::xor::{
     Distance,
     Key
 };
