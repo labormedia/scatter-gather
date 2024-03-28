@@ -1,5 +1,5 @@
-use buckets::peer_id::PeerId;
-use buckets::xor::{
+use identity_buckets::peer_id::PeerId;
+use identity_buckets::xor::{
     Distance,
     Key
 };

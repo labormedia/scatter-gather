@@ -12,7 +12,7 @@
 // };
 // use std::task::Poll;
 use rand::seq::SliceRandom;
-use buckets::peer_id::PeerId;
+use identity_buckets::peer_id::PeerId;
 use scatter_gather::Router;
 use rayon::{
     prelude::*,//{ParallelSliceMut, ParallelBridge},
