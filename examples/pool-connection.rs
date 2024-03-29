@@ -40,8 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         // handler: bitstamp_interceptor
     };
 
-    let connection1 = WebSocketsMiddleware::new(config_binance);
-    let connection2 = WebSocketsMiddleware::new(config_bitstamp);
+    let connection1 = WebSocketsMiddleware::try_new(config_binance);
+    let connection2 = WebSocketsMiddleware::try_new(config_bitstamp);
 
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
@@ -53,8 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut bitstamp_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
     let mut binance_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
 
-    bitstamp_pool.collect_streams(Box::pin(connection2.await.get_stream()));
-    binance_pool.collect_streams(Box::pin(connection1.await.get_stream()));
+    bitstamp_pool.collect_streams(Box::pin(connection2.await?.get_stream()));
+    binance_pool.collect_streams(Box::pin(connection1.await?.get_stream()));
 
     loop {
         match bitstamp_pool.next().await {

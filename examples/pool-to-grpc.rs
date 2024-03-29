@@ -64,16 +64,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         // handler: bitstamp_interceptor
     };
 
-    let binance = WebSocketsMiddleware::new(config_binance).await ;
-    let bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
+    let binance = WebSocketsMiddleware::try_new(config_binance).await ;
+    let bitstamp = WebSocketsMiddleware::try_new(config_bitstamp).await;
 
     let binance_intercepted = 
-        binance
+        binance?
             .read
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) );
     let bitstamp_intercepted =
-        bitstamp
+        bitstamp?
             .read
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
