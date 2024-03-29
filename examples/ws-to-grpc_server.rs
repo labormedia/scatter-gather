@@ -42,8 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         init_handle: Some(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()),
     };
 
-    let binance = WebSocketsMiddleware::new(config_binance).await ;
-    let bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
+    let binance = WebSocketsMiddleware::try_new(config_binance).await?;
+    let bitstamp = WebSocketsMiddleware::try_new(config_bitstamp).await?;
 
     let binance_intercepted = 
         binance
