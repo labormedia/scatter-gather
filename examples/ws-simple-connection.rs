@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut connection = WebSocketsMiddleware::try_new(config).await?;
     connection.send(r#"{"event": "bts:subscribe","data":{"channel": "diff_order_book_ethbtc"}}"#.to_string()).await?;
     let mut new_stream = connection
-        .read
+        .get_stream()
         .map(|result| result.unwrap().into_text().unwrap())
         .map(|msg| BitstampDepthInterceptor::intercept(msg));
     while let Some(data) = new_stream.next().await {

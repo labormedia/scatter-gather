@@ -37,7 +37,7 @@ pub struct WebSocketsMiddleware {
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    pub read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
+    read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
 }
 
 // Implement custom fucntionality for the middleware.

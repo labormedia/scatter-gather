@@ -69,12 +69,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let binance_intercepted = 
         binance?
-            .read
+            .get_stream()
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) );
     let bitstamp_intercepted =
         bitstamp?
-            .read
+            .get_stream()
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 

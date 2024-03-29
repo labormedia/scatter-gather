@@ -1,4 +1,7 @@
-use futures::StreamExt;
+use futures::{
+    StreamExt,
+    TryStreamExt,
+};
 use scatter_gather_core::{
     middleware_interface::{
         NodeConfig, Interceptor,
@@ -10,14 +13,18 @@ use scatter_gather_core::{
     },
     connection::ConnectionHandlerOutEvent
 };
-use scatter_gather_websockets::WebSocketsMiddleware;
+use scatter_gather_websockets::{
+    WebSocketsMiddleware,
+    ConnectionHandlerError as WebSocketsError,
+};
 use scatter_gather_grpc::{
     GrpcMiddleware,
     schema_specific::
         orderbook::{
             Summary, 
             Level
-        }
+        },
+    ConnectionHandlerError as GrpcError,
 };
 mod source_specs;
 use source_specs::{
@@ -47,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let binance_intercepted = 
         binance
-            .read
+            .get_stream()
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| {
                 println!("Input test from Binance: {:?}", text);
@@ -55,8 +62,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             });
     let bitstamp_intercepted =
         bitstamp
-            .read
-            .map(|result| result.unwrap().into_text().unwrap())
+            .get_stream()
+            .map( |result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 
     let grpc_config: NodeConfig = NodeConfig { // handler: Interceptors::Depth
