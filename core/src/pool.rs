@@ -92,6 +92,14 @@ pub struct PoolConfig {
     pub task_event_buffer_size: usize
 }
 
+impl Default for PoolConfig {
+    fn default() -> Self {
+        PoolConfig {
+            task_event_buffer_size: 1_usize,
+        }
+    }
+}
+
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
     _pool_id: usize,
     counters: PoolConnectionCounters,
