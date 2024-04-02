@@ -35,7 +35,7 @@ impl DHT {
                         .map(|x| {
                             *x
                         })
-                        .collect::<Vec<PeerId>>();
+                        .collect();
                     (*peer_id, router_list)
                 })
                 .fold( HashMap::new(),
