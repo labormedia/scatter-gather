@@ -19,19 +19,21 @@ use std::{
         Hash,
         Hasher
     },
+    error::Error,
+};
+use core::task::{
+    Poll,
+    Context
 };
 use futures::{
     channel::mpsc,
     StreamExt,
-    task::{
-        Poll,
-        Context
-    },
     Future,
     stream::{
         FuturesUnordered,
         SelectAll, Next
     }, SinkExt,
+    TryFutureExt,
 };
 use tokio::sync::Mutex;
 
@@ -92,6 +94,14 @@ pub struct PoolConfig {
     pub task_event_buffer_size: usize
 }
 
+impl Default for PoolConfig {
+    fn default() -> Self {
+        PoolConfig {
+            task_event_buffer_size: 1_usize,
+        }
+    }
+}
+
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
     _pool_id: usize,
     counters: PoolConnectionCounters,
@@ -135,9 +145,8 @@ U: Send + 'static + std::fmt::Debug
             established_connection_events_rx,
         }
     }
-    pub fn with_executor(mut self, e: Box<dyn Executor<T> + Send>) -> Self {
+    pub fn with_executor(&mut self, e: Box<dyn Executor<T> + Send>) {
         self.executor = Some(e);
-        self
     }
     pub fn spawn(&mut self, task: Pin<Box<dyn Future<Output = T> + Send>>) {
         if let Some(executor) = &self.executor {
@@ -157,7 +166,7 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.push(stream);
     }
 
-    pub async fn connect(self) -> Poll<Arc<Mutex<T>>> {
+    pub async fn connect(&mut self) -> Poll<Arc<Mutex<T>>> {
         match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
         {
             Poll::Ready(event) => { 
@@ -202,7 +211,7 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.next()
     }
 
-    pub async fn poll(mut self, _cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
+    pub async fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
     {
         #[cfg(debug_assertions)]
         println!("Entering Pool poll.");
@@ -211,6 +220,8 @@ U: Send + 'static + std::fmt::Debug
                 id: self.next_connection_id(),
                 state: Arc::new(Mutex::new(s))
             };
+            #[cfg(debug_assertions)]
+            println!("Pool Connection {:?}", pool_connection);
             // let pool = self.established.entry(pool_connection.id).or_insert(EstablishedConnection(&pool_connection));
             self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
             self.counters.established_incoming += 1;
@@ -218,8 +229,12 @@ U: Send + 'static + std::fmt::Debug
         };
 
         if let Some(EstablishedConnection(t)) = self.established_connection_events_rx.next().await {
+            #[cfg(debug_assertions)]
+            println!("Connection Established.");
             Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(t))
         } else {
+            #[cfg(debug_assertions)]
+            println!("Connection Pending.");
             Poll::Pending
         }
     }

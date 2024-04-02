@@ -31,11 +31,13 @@ use source_specs::{
     bitstamp::BitstampDepthInterceptor,
 };
 use tonic::service::interceptor;
+use core::task::{
+    Poll,
+    Context
+};
 use std::{
     pin::Pin,
     any::type_name,
-    task::Context,
-    task::Poll
 };
 use tokio::runtime::Runtime;
 
@@ -62,17 +64,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         // handler: bitstamp_interceptor
     };
 
-    let binance = WebSocketsMiddleware::new(config_binance).await ;
-    let bitstamp = WebSocketsMiddleware::new(config_bitstamp).await;
+    let binance = WebSocketsMiddleware::try_new(config_binance).await ;
+    let bitstamp = WebSocketsMiddleware::try_new(config_bitstamp).await;
 
     let binance_intercepted = 
-        binance
-            .read
+        binance?
+            .get_stream()
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) );
     let bitstamp_intercepted =
-        bitstamp
-            .read
+        bitstamp?
+            .get_stream()
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
 

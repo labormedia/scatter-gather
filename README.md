@@ -2,6 +2,12 @@
 # scatter-gather
 A distributed system simulation library with a scatter-gather approach.
 
+# Requirements
+```
+sudo sudo apt update
+sudo apt install openssl
+```
+
 # Build
 ```
 cargo build --release --all --examples

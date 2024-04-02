@@ -6,7 +6,7 @@ pub trait Interceptor: Send {
     fn intercept(input: Self::Input) -> Self::Output;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeConfig {
     pub url: String,
     pub prefix: String,

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use rand::seq::{SliceRandom, IteratorRandom};
-use scatter_gather_models::peer_id::PeerId;
-use scatter_gather_models::xor;
+use identity_buckets::peer_id::PeerId;
+use identity_buckets::xor;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     generating_random(100_000);
     sorting(1_000_000)?;

@@ -1,6 +1,7 @@
-use std::task::{
+use core::task::{
     Poll,
-    Context};
+    Context
+};
 use scatter_gather::source_specs::{binance::BinanceDepthInterceptor, bitstamp::BitstampDepthInterceptor};
 use scatter_gather_core::{
     middleware_interface::{

@@ -12,11 +12,15 @@ use scatter_gather_core::{
         Interceptor
     },
 };
+use core::task::{
+    Poll,
+    Context
+};
 use std::{
-    task::Poll,
     fmt,
     thread,
-    time
+    time,
+    error::Error,
 };
 use schema_specific::orderbook::{
     Summary, orderbook_aggregator_client::OrderbookAggregatorClient,
@@ -71,17 +75,21 @@ impl GrpcMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
 
+    pub async fn try_new(config: NodeConfig) -> Result<GrpcMiddleware, Box<dyn Error>> {
+        Ok(Self::spin_up(config).await?)
+    }
+
     pub async fn spin_up(config: NodeConfig) -> Result<Self, Box<dyn std::error::Error>> {
       
         let (write, read): (mpsc::Sender<ConnectionHandlerOutEvent<Result<Summary, Status>>>, mpsc::Receiver<ConnectionHandlerOutEvent<Result<Summary, Status>>>) = mpsc::channel(32);
         let (in_broadcast, mut _out_broadcast): (broadcast::Sender<Result<Summary, Status>>, broadcast::Receiver<Result<Summary, Status>>) = broadcast::channel(32);
         let in_broadcast_clone = broadcast::Sender::clone(&in_broadcast);
         let channels = schema_specific::OrderBook::new(in_broadcast_clone);        
-        schema_specific::server(ADDRESS, channels).expect("Couldn't start server.");
+        schema_specific::server(ADDRESS, channels)?;
         thread::sleep(time::Duration::from_secs(5));
         // Creates a new client for accesing the gRPC service.
         let client_channel = schema_specific::orderbook::orderbook_aggregator_client::OrderbookAggregatorClient::connect(ADDRESS)
-        .await.expect("Cannot start gRPC client.");
+        .await?;
 
         let i = Self {
             config,
@@ -102,7 +110,7 @@ impl GrpcMiddleware {
             // println!("Received while in client_buf: {:?}", msg);
             let input = futures::stream::iter([msg]).take(1);
             let request = tonic::Request::new(input);
-            self.client.book_summary_feed(request).await.expect("Cannot buffer book_summary_feed.");
+            self.client.book_summary_feed(request).await?;
         };
         // #[cfg(debug_assertions)]
         // println!("Leaving client_buf.");
@@ -116,6 +124,8 @@ impl GrpcMiddleware {
 pub enum ConnectionHandlerError {
     Custom
 }
+
+impl Error for ConnectionHandlerError {}
 
 // Define a way to debug the errors.
 impl fmt::Display for ConnectionHandlerError {
@@ -143,8 +153,8 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
 
     fn poll(
         self,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<ConnectionHandlerOutEvent<Connection>> 
+        _cx: &mut Context<'_>,
+    ) -> Poll<ConnectionHandlerOutEvent<Connection>> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
         let connection: Connection = Connection {

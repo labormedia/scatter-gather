@@ -10,18 +10,31 @@ use sgc::connection::{
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{
     connect_async, 
-    tungstenite::protocol::{
-        Message,
+    tungstenite::{
+            protocol::{
+            Message,
+        },
+        http::Response,
     },
-    tungstenite::error::Error
+    // tungstenite::error::Error
 };
 use tokio::net::TcpStream;
+use core::{
+    task::{
+        Poll,
+        Context,
+    },
+    pin::Pin,
+};
 use futures::{
+    Future,
     StreamExt, SinkExt,
     stream::{SplitSink, SplitStream},
-    task::Poll,
 };
-use std::fmt;
+use std::{
+    fmt,
+    error::Error,
+};
 
 
 // Declares the middleware Factory with an associated generic type. 
@@ -31,7 +44,7 @@ pub struct WebSocketsMiddleware {
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    pub read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
+    read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
 }
 
 // Implement custom fucntionality for the middleware.
@@ -39,23 +52,22 @@ impl WebSocketsMiddleware {
     pub async fn new(config: NodeConfig) -> WebSocketsMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
-    
-    async fn spin_up(config: NodeConfig) -> 
-        Result<Self, Box<dyn std::error::Error>>
+
+    pub async fn connect<T>(config: NodeConfig) -> Pin<Box<dyn Future<Output = Result<(WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Response<()>), tokio_tungstenite::tungstenite::Error>> + Send>>
     {
-        let (ws_stream,_b) = connect_async(&config.url).await.expect("Connection to Websocket server failed");
+        Box::pin(connect_async(config.url))
+    }
+
+    pub async fn try_new(config: NodeConfig) -> Result<WebSocketsMiddleware, Box<dyn Error>> {
+        Ok(Self::spin_up(config).await?)
+    }
+    
+    async fn spin_up(config: NodeConfig) -> Result<Self, Box<dyn std::error::Error>>
+    {
+        let (ws_stream,_b) = connect_async(&config.url).await?;
         let (mut write,read) = ws_stream.split();
         if let Some(init_handle) = &config.init_handle {
-            match write.send(Message::Text(init_handle.to_string())).await {
-                Ok(m) => {
-                    #[cfg(debug_assertions)]
-                    println!("Connection Response : {:?}", m)
-                },
-                Err(e) => {
-                    #[cfg(debug_assertions)]
-                    println!("Initialization Error: {:?}", e)
-                }
-            };
+            write.send(Message::Text(init_handle.to_string())).await?;
         };
         Ok(
             Self {
@@ -66,19 +78,11 @@ impl WebSocketsMiddleware {
         )
     }
 
-    pub async fn send(&mut self, msg: String) {
-        match self.write.send(Message::Text(msg)).await {
-            Ok(m) => {
-                #[cfg(debug_assertions)]
-                println!("Response {:?}", m)
-            },
-            Err(e) => {
-                #[cfg(debug_assertions)]
-                println!("Error: {:?}", e)
-            }
-        };
+    pub async fn send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = self.write.send(Message::Text(msg)).await?;
         #[cfg(debug_assertions)]
         println!("message sent.");
+        Ok(())
     }
 
     pub fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>> {
@@ -91,6 +95,8 @@ impl WebSocketsMiddleware {
 pub enum ConnectionHandlerError {
     Custom
 }
+
+impl Error for ConnectionHandlerError {}
 
 // Define a way to debug the errors.
 impl fmt::Display for ConnectionHandlerError {
@@ -117,16 +123,12 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
 
     fn poll(
             self,
-            _cx: &mut std::task::Context<'_>,
-        ) -> std::task::Poll<Self::OutEvent> 
+            _cx: &mut Context<'_>,
+        ) -> Poll<Self::OutEvent> 
     {
         let connection: Connection = Connection {
             id : ConnectionId::new(0),
-            source_type: NodeConfig {
-                url: self.config.url.clone(),
-                prefix: self.config.prefix.clone(),
-                init_handle: self.config.init_handle,
-            },
+            source_type: self.config.clone(),
         };        
         let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);
         Poll::Ready(event)

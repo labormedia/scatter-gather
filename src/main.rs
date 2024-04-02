@@ -10,13 +10,12 @@
 //     },
 //     connection::ConnectionHandlerOutEvent
 // };
-// use std::task::Poll;
 use rand::seq::SliceRandom;
-use scatter_gather_models::peer_id::PeerId;
 use scatter_gather::{
     DHT,
     Router
 };
+use identity_buckets::peer_id::PeerId;
 use rayon::{
     prelude::*,//{ParallelSliceMut, ParallelBridge},
     iter::{

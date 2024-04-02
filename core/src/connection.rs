@@ -1,14 +1,15 @@
 use crate::middleware_interface::*;
-use core::{
+use core::task::{
+    Poll,
+    Context,
+};
+use std::{
     fmt,
-    task::{
-        Poll,
-        Context
-    },
     hash::{
         Hash,
         Hasher
     },
+    error::Error,
 };
 
 #[derive(Debug)]
@@ -83,33 +84,4 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>>;
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>>;
     fn as_any(&self) -> &dyn std::any::Any;
-}
-
-// A dummy implementation for complying to the architecture's boundings.
-impl<'b> ConnectionHandler<'b> for Connection {
-    type InEvent = ConnectionHandlerInEvent;
-    type OutEvent = ConnectionHandlerOutEvent<Connection>;
-
-    fn poll(
-            self,
-            _cx: &mut Context<'_>,
-        ) -> Poll<Self::OutEvent> 
-    {
-        #[cfg(debug_assertions)]
-        println!("self {:?}", self);
-        Poll::Pending
-    }
-
-    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
-        #[cfg(debug_assertions)]
-        println!("Injecting event on Connection. {:?}", event);
-        Ok(())
-    }
-
-    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self as _
-    }
 }
