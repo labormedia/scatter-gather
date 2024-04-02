@@ -93,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     match grpc_pool.connect().await {
         Poll::Ready(conn) => {
             println!("Buffering.");
-            let mut conn_lock = conn.lock().await;
+            let mut conn_lock = conn.state.lock().await;
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
                 #[cfg(debug_assertions)]

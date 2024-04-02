@@ -84,9 +84,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         match bitstamp_pool.connect().await {
             Poll::Ready(event) => {
                 println!("Event {:?}", event);
-                let mut init_ws = event.clone();
+                let mut init_ws = event.state.clone();
                 init_ws.lock().await.init_handle().await?;
-                let read_ws = event.clone();
+                let read_ws = event.state.clone();
                 let stream = &mut read_ws.lock().await.read;
                 while let e = stream.next().await {
                     println!("Incoming {:?}", e);

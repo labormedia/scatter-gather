@@ -40,8 +40,8 @@ use tokio::sync::Mutex;
 #[derive(Debug)]
 pub struct PoolConnection<T: for <'a> ConnectionHandler<'a>> {
     // conn: Pin<Box<Connection>>,
-    id: ConnectionId,
-    state: Arc<Mutex<T>>
+    pub id: ConnectionId,
+    pub state: Arc<Mutex<T>>
 }
 
 impl<T: for<'a> ConnectionHandler<'a>> PartialEq for PoolConnection<T> {
@@ -168,7 +168,7 @@ U: Send + 'static + std::fmt::Debug
         self.local_streams.push(stream);
     }
 
-    pub async fn connect(&mut self) -> Poll<Arc<Mutex<T>>> {
+    pub async fn connect(&mut self) -> Poll<PoolConnection<T>> {
         match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
         {
             Poll::Ready(event) => { 
@@ -176,8 +176,8 @@ U: Send + 'static + std::fmt::Debug
                 println!("Poll Ready... : {event:?}");
                 match event {
                     ConnectionHandlerOutEvent::ConnectionEstablished(pool_conn) => {
-                        let a = pool_conn.state;
-                        Poll::Ready(a)
+                        // let a = pool_conn.state;
+                        Poll::Ready(pool_conn)
                     }
                     _ => {
                         Poll::Pending

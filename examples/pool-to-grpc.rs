@@ -106,16 +106,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     ws_pool.collect_streams(Box::pin(binance_intercepted));
     ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
-    // ws_pool.local_streams
-    //     .map(|interceptor| ;
-
-
-    // grpc_pool.intercept_stream().await;
-
     match grpc_pool.connect().await {
         Poll::Ready(conn) => {
             println!("Buffering.");
-            let mut conn_lock = conn.lock().await;
+            let mut conn_lock = conn.state.lock().await;
             while let Some(intercepted) = ws_pool.next().await {
                 let level_point_left = match intercepted {
                     Interceptors::Binance(point) => {
@@ -174,24 +168,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                     .await?;
                 conn_lock
                     .client_buf()
-                    .await
-                    .expect("Unable to buffer gRPC channel.");
+                    .await?
             }
 
         }
         Poll::Pending => {}
     };
-    println!("Connected ?");
-    // grpc_pool.connect().await;
-
-    // grpc_pool.intercept_stream().await;
-    // let pool_config2 = PoolConfig {
-    //     task_event_buffer_size: 1
-    // };
-    // let mut grpc_pool: Pool<GrpcMiddleware<Interceptors>, Interceptors> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
-
-    // grpc_pool.collect_streams(Box::pin(ws_pool.local_streams));
-
 
     Ok(())
     
