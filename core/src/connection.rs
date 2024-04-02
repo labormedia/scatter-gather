@@ -9,6 +9,7 @@ use std::{
         Hash,
         Hasher
     },
+    error::Error,
 };
 
 #[derive(Debug)]

@@ -10,17 +10,24 @@ use sgc::connection::{
 use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{
     connect_async, 
-    tungstenite::protocol::{
-        Message,
+    tungstenite::{
+            protocol::{
+            Message,
+        },
+        http::Response,
     },
     // tungstenite::error::Error
 };
 use tokio::net::TcpStream;
-use core::task::{
-    Poll,
-    Context
+use core::{
+    task::{
+        Poll,
+        Context,
+    },
+    pin::Pin,
 };
 use futures::{
+    Future,
     StreamExt, SinkExt,
     stream::{SplitSink, SplitStream},
 };
@@ -44,6 +51,11 @@ pub struct WebSocketsMiddleware {
 impl WebSocketsMiddleware {
     pub async fn new(config: NodeConfig) -> WebSocketsMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
+    }
+
+    pub async fn connect<T>(config: NodeConfig) -> Pin<Box<dyn Future<Output = Result<(WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Response<()>), tokio_tungstenite::tungstenite::Error>> + Send>>
+    {
+        Box::pin(connect_async(config.url))
     }
 
     pub async fn try_new(config: NodeConfig) -> Result<WebSocketsMiddleware, Box<dyn Error>> {
