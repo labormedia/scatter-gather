@@ -151,6 +151,8 @@ U: Send + 'static + std::fmt::Debug
     pub fn spawn(&mut self, task: Pin<Box<dyn Future<Output = T> + Send>>) {
         if let Some(executor) = &self.executor {
             // If there's an executor defined for this Pool then we use it.
+            #[cfg(debug_assertions)]
+            println!("Executing task.");
             executor.exec(task);
         } else {
             // Otherwise we push the task to a FuturesUnordered collection.
@@ -222,7 +224,6 @@ U: Send + 'static + std::fmt::Debug
             };
             #[cfg(debug_assertions)]
             println!("Pool Connection {:?}", pool_connection);
-            // let pool = self.established.entry(pool_connection.id).or_insert(EstablishedConnection(&pool_connection));
             self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
             self.counters.established_incoming += 1;
             self.counters.pending_incoming -= 1;             

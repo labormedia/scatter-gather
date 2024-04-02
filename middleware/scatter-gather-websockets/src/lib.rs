@@ -44,7 +44,7 @@ pub struct WebSocketsMiddleware {
     // pub ws_stream: WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>,
     // pub response: http::Response<()>
     pub write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
+    pub read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>
 }
 
 // Implement custom fucntionality for the middleware.
@@ -61,21 +61,25 @@ impl WebSocketsMiddleware {
     pub async fn try_new(config: NodeConfig) -> Result<WebSocketsMiddleware, Box<dyn Error>> {
         Ok(Self::spin_up(config).await?)
     }
+
+    pub async fn init_handle(&mut self) -> Result<(), Box<dyn std::error::Error>>{
+        if let Some(init_handle) = &self.config.init_handle {
+            self.write.send(Message::Text(init_handle.to_string())).await?;
+        };
+        Ok(())
+    }
     
     async fn spin_up(config: NodeConfig) -> Result<Self, Box<dyn std::error::Error>>
     {
         let (ws_stream,_b) = connect_async(&config.url).await?;
         let (mut write,read) = ws_stream.split();
-        if let Some(init_handle) = &config.init_handle {
-            write.send(Message::Text(init_handle.to_string())).await?;
-        };
-        Ok(
-            Self {
+        let mut new_ws = Self {
                 config,
                 write,
                 read
-            }
-        )
+            };
+        new_ws.init_handle().await;
+        Ok(new_ws)
     }
 
     pub async fn send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {

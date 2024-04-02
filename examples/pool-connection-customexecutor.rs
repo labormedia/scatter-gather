@@ -9,12 +9,7 @@ use scatter_gather_core::{
     pool::{
         Pool,
         PoolConfig,
-        PoolConnectionLimits, 
-        // PoolEvent::{
-        //     ConnectionEstablished,
-        //     ConnectionClosed,
-        //     ConnectionEvent,
-        // },
+        PoolConnectionLimits,
     },
     connection::{
         ConnectionId,
@@ -23,7 +18,10 @@ use scatter_gather_core::{
     },
     executors::CustomExecutor,
 };
-use futures::executor::ThreadPool;
+use futures::{
+    executor::ThreadPool,
+    StreamExt,
+};
 use scatter_gather_websockets::WebSocketsMiddleware;
 mod source_specs;
 use source_specs::{
@@ -57,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     };
 
     let connection1 = WebSocketsMiddleware::try_new(config_binance);
-    let connection2 = WebSocketsMiddleware::try_new(config_bitstamp);
+    let connection2 = WebSocketsMiddleware::try_new(config_bitstamp.clone());
 
     let pool_config1 = PoolConfig {
         task_event_buffer_size: 1
@@ -79,52 +77,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     //         executor: ThreadPool::new()?,
     //     })
     // );
-    bitstamp_pool.collect_streams(Box::pin(connection2.await?.get_stream()));
-    // binance_pool.collect_streams(Box::pin(connection1.await?.get_stream()));
     
-    // loop {
-    //     match bitstamp_pool.next().await {
-    //         None => { },
-    //         Some(Ok(Message::Text(a))) => println!("Accesing Bitstamp: {:?}", a),
-    //         _ => {}
-    //     }
-    //     match binance_pool.next().await {
-    //         None => { },
-    //         Some(Ok(Message::Text(a))) => println!("Accesing Binance: {:?}", a),
-    //         _ => {}
-    //     }
-    // };
-    // bitstamp_pool.inject_connection(connection2);
-    let mut cx = Context::from_waker(futures::task::noop_waker_ref());
+    bitstamp_pool.inject_connection(WebSocketsMiddleware::new(config_bitstamp));
+
     loop {
-        println!("Loop.");
-        match bitstamp_pool.poll(&mut cx).await {
+        match bitstamp_pool.connect().await {
+            Poll::Ready(event) => {
+                println!("Event {:?}", event);
+                let mut init_ws = event.clone();
+                init_ws.lock().await.init_handle().await?;
+                let read_ws = event.clone();
+                let stream = &mut read_ws.lock().await.read;
+                while let e = stream.next().await {
+                    println!("Incoming {:?}", e);
+                };
+            },
             Poll::Pending => {
                 println!("Pending.")
-            },
-            Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(c)) => {
-                println!("PoolConnection {:?}",c);
-            },
-            Poll::Ready(ConnectionHandlerOutEvent::ConnectionClosed(_)) => {
-                println!("Connection closed.")
-            },
-            Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(_)) => {
-                println!("Connection Event.")
-            },
-            Poll::Ready(ConnectionHandlerOutEvent::Custom) => {
-                println!("Custom.")
-            },
-        };
-    }
-    // loop {
-    //     match bitstamp_pool.connect().await {
-    //         Poll::Ready(e) => {
-    //             println!("Event {:?}", e)
-    //         },
-    //         Poll::Pending => {
-    //             println!("Pending.")
-    //         }
-    //     }
-    // } 
+            }
+        }
+    } 
     Ok(())
 }
