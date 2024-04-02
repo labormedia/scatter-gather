@@ -1,4 +1,4 @@
-use std::{
+pub use core::{
     future::Future,
     pin::Pin
 };
@@ -6,6 +6,7 @@ use std::{
 pub mod middleware_interface;
 pub mod connection;
 pub mod pool;
+pub mod executors;
 
 pub trait Executor<T: Send + Sync> {
     fn exec(&self, future: Pin<Box<dyn Future<Output = T> + Send>>);
