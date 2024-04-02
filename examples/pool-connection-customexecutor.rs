@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         // handler: bitstamp_interceptor
     };
 
-    let connection1 = WebSocketsMiddleware::try_new(config_binance);
+    let connection1 = WebSocketsMiddleware::try_new(config_binance.clone());
     let connection2 = WebSocketsMiddleware::try_new(config_bitstamp.clone());
 
     let pool_config1 = PoolConfig {
@@ -79,23 +79,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // );
     
     bitstamp_pool.inject_connection(WebSocketsMiddleware::new(config_bitstamp));
+    binance_pool.inject_connection(WebSocketsMiddleware::new(config_binance));
 
-    loop {
-        match bitstamp_pool.connect().await {
-            Poll::Ready(event) => {
-                println!("Event {:?}", event);
-                let mut init_ws = event.state.clone();
-                init_ws.lock().await.init_handle().await?;
-                let read_ws = event.state.clone();
-                let stream = &mut read_ws.lock().await.read;
-                while let e = stream.next().await {
-                    println!("Incoming {:?}", e);
-                };
-            },
-            Poll::Pending => {
-                println!("Pending.")
-            }
+    let bitstamp_conn = bitstamp_pool.connect().await;
+    let binance_conn = binance_pool.connect().await;
+
+    if let (Poll::Ready(e1), Poll::Ready(e2)) = (binance_conn,bitstamp_conn) {
+        let mut init_binance_ws = e1.state.clone();
+        init_binance_ws.lock().await.init_handle().await?;
+        let read_binance_ws = e1.state.clone();
+        let binance_stream = &mut read_binance_ws.lock().await.read;
+
+        let mut init_bitstamp_ws = e2.state.clone();
+        init_bitstamp_ws.lock().await.init_handle().await?;
+        let read_bitstamp_ws = e2.state.clone();
+        let bitstamp_stream = &mut read_bitstamp_ws.lock().await.read;
+
+        loop {
+            println!("Incoming Bitstamp{:?}", bitstamp_stream.next().await);
+            println!("Incoming Binance{:?}", binance_stream.next().await);
         }
-    } 
+    }
+
+    
+
     Ok(())
 }
