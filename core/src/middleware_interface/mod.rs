@@ -15,3 +15,22 @@ pub struct NodeConfig {
     // pub handler: THandler
     // pub handler: &'a THandler,
 }
+
+impl NodeConfig {
+    pub fn from<T: ToString>(
+        url: T,
+        prefix: T,
+        init_handle: Option<T>,
+    ) -> Self {
+        NodeConfig {
+            url: url.to_string(),
+            prefix: prefix.to_string(),
+            init_handle: match init_handle {
+                Some(handle) => {
+                    Some(handle.to_string())
+                },
+                None => { None },
+            }
+        }
+    }
+}
