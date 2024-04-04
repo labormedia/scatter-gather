@@ -23,6 +23,7 @@ use futures::{
     StreamExt,
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
+use scatter_gather_grpc::GrpcMiddleware;
 mod source_specs;
 use source_specs::{
     binance::BinanceDepthInterceptor,
@@ -66,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut bitstamp_pool: WSPool = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
     let mut binance_pool: WSPool = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
 
-    let mut general_pool: WSPool = Pool::new(
+    let mut ws_pool: WSPool = Pool::new(
         0_usize, // Pool ID
         PoolConfig { // Pool General Configuration
             task_event_buffer_size: 1
@@ -87,10 +88,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         ),
     ]
     .map( |config| {
-        general_pool.inject_connection(WebSocketsMiddleware::new(config.clone()));
+        ws_pool.inject_connection(WebSocketsMiddleware::new(config.clone()));
     } );
     
-    general_pool.connect().await;
+    ws_pool.connect().await;
 
     // bitstamp_pool.with_executor(
     //     Box::new(CustomExecutor {

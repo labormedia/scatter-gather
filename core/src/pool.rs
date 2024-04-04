@@ -105,7 +105,7 @@ impl Default for PoolConfig {
 pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
     _pool_id: usize,
     counters: PoolConnectionCounters,
-    _pending: HashMap<usize, PendingConnection<T>>,
+    _pending: HashMap<usize, Pin<Box<dyn Future<Output = PendingConnection<T>> + Send>> >,
     _established: HashMap<usize, EstablishedConnection<T>>,
     next_connection_id: ConnectionId,
     // This spawner is for connections bounded to T: Connectionhandler
@@ -162,6 +162,9 @@ U: Send + 'static + std::fmt::Debug
     pub fn inject_connection(&mut self, conn: impl Future<Output = T> + Send + 'static) {
         self.spawn(Box::pin(conn));
         self.counters.pending_incoming += 1;
+    }
+    pub fn eject_connection(&mut self) -> Next<mpsc::Receiver<EstablishedConnection<T>>> {
+        self.established_connection_events_rx.next()
     }
 
     pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
@@ -229,10 +232,10 @@ U: Send + 'static + std::fmt::Debug
             self.counters.pending_incoming -= 1;             
         };
 
-        if let Some(EstablishedConnection(t)) = self.established_connection_events_rx.next().await {
+        if let Some(EstablishedConnection(c)) = self.eject_connection().await {
             #[cfg(debug_assertions)]
             println!("Connection Established.");
-            Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(t))
+            Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(c))
         } else {
             #[cfg(debug_assertions)]
             println!("Connection Pending.");
