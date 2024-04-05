@@ -39,7 +39,7 @@ fn type_of<T>(_: T) -> &'static str {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
-    type WSPool = Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>>;
+    type WSPool = Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>, usize>;
 
     let binance_interceptor = BinanceDepthInterceptor::new();
     let bitstamp_interceptor = BitstampDepthInterceptor::new();

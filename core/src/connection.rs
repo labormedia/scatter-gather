@@ -1,10 +1,13 @@
 use crate::middleware_interface::*;
-use core::task::{
-    Poll,
-    Context,
+use core::{
+    ops::Add,
+    task::{
+        Poll,
+        Context,
+    },
 };
 use std::{
-    fmt,
+    fmt::Debug,
     hash::{
         Hash,
         Hasher
@@ -14,10 +17,8 @@ use std::{
 
 #[derive(Debug)]
 pub struct Connection {
-    pub id: ConnectionId,
+    pub id: ConnectionId<usize>,
     pub source_type: NodeConfig,
-    // pub handler: THandler
-    // pub handler: THandler
 }
 
 impl PartialEq for Connection {
@@ -36,19 +37,25 @@ impl Hash for Connection {
 
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ConnectionId(usize);
+pub struct ConnectionId<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>>(pub Id);
 
-impl ConnectionId {
+impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> ConnectionId<Id> {
     /// Creates a unique id for a new connection
-    pub fn new(id: usize) -> Self {
+    pub fn new(id:Id) -> ConnectionId<Id> {
         Self(id)
     }
 }
 
-impl core::ops::Add<usize> for ConnectionId {
+impl ConnectionId<i32> {}
+impl ConnectionId<usize> {}
+
+impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> Add<Id> for ConnectionId<Id>
+where 
+Id: Eq + Hash + PartialEq + Copy + Debug,
+{
     type Output = Self;
 
-    fn add(self, other: usize) -> Self {
+    fn add(self, other: Id) -> Self {
         Self(self.0 + other)
     }
 }
@@ -72,9 +79,9 @@ pub enum ConnectionHandlerOutEvent<TCustom> {
 
 pub trait ConnectionHandler<'a>: 'a + Send {
 
-    type InEvent: fmt::Debug + Send + 'a;
-    type OutEvent: fmt::Debug + Send + 'a;
-    // type Error: error::Error + fmt::Debug + Send + 'static;
+    type InEvent: Debug + Send + 'a;
+    type OutEvent: Debug + Send + 'a;
+    // type Error: error::Error + Debug + Send + 'static;
 
     fn poll(
         self,

@@ -21,9 +21,12 @@ use std::{
     },
     error::Error,
 };
-use core::task::{
-    Poll,
-    Context
+use core::{
+    ops::Add,
+    task::{
+        Poll,
+        Context
+    },
 };
 use futures::{
     channel::mpsc,
@@ -38,40 +41,60 @@ use futures::{
 use tokio::sync::Mutex;
 
 #[derive(Debug)]
-pub struct PoolConnection<T: for <'a> ConnectionHandler<'a>> {
+pub struct PoolConnection<T: for <'a> ConnectionHandler<'a>, Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> {
     // conn: Pin<Box<Connection>>,
-    pub id: ConnectionId,
+    pub id: ConnectionId<Id>,
     pub state: Arc<Mutex<T>>
 }
 
-impl<T: for<'a> ConnectionHandler<'a>> PartialEq for PoolConnection<T> {
+impl<T, Id> PartialEq for PoolConnection<T, Id>
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+{
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<T: for <'a> ConnectionHandler<'a>> Eq for PoolConnection<T> {}
+impl<T, Id> Eq for PoolConnection<T, Id> 
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+{}
 
-impl<T: for<'a> ConnectionHandler<'a>> Hash for PoolConnection<T> {
+impl<T, Id> Hash for PoolConnection<T, Id> 
+where
+T: for<'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+{
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-pub enum PoolEvent<T: for<'a> ConnectionHandler<'a>> {
-    ConnectionEstablished(PoolConnection<T>),
-    ConnectionClosed(PoolConnection<T>),
-    ConnectionEvent(PoolConnection<T>),
+pub enum PoolEvent<T: for<'a> ConnectionHandler<'a>, Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> {
+    ConnectionEstablished(PoolConnection<T, Id>),
+    ConnectionClosed(PoolConnection<T, Id>),
+    ConnectionEvent(PoolConnection<T, Id>),
     Custom
 }
 
-impl<T: for <'a> ConnectionHandler<'a>> Debug for PoolEvent<T> {
+impl<T, Id> Debug for PoolEvent<T, Id> 
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Default")
     }
 }
 
-impl<T: for <'a> ConnectionHandler<'a>> PoolEvent<T> {
+impl<T, Id> PoolEvent<T, Id> 
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+{
     fn notify_event<'a>(
         &'a self, 
         mut events: mpsc::Sender<&'a Self>
@@ -102,45 +125,48 @@ impl Default for PoolConfig {
     }
 }
 
-pub struct Pool<T: for <'a> ConnectionHandler<'a> + Debug, U> {
-    _pool_id: usize,
+pub struct Pool<T, InBound, Id>
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+{
+    _pool_id: Id,
     counters: PoolConnectionCounters,
-    _pending: HashMap<usize, Pin<Box<dyn Future<Output = PendingConnection<T>> + Send>> >,
-    _established: HashMap<usize, EstablishedConnection<T>>,
-    next_connection_id: ConnectionId,
+    pending: HashMap<usize, Pin<Box<dyn Future<Output = PendingConnection<T, Id>> + Send>> >,
+    _established: HashMap<usize, EstablishedConnection<T, Id>>,
     // This spawner is for connections bounded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
-    // These streams are for the incoming data streams of type U
-    pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>,
+    // These streams are for the incoming data streams of type InBound
+    pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = InBound>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
-    _pending_connection_events_tx: mpsc::Sender<PendingConnection<T>>,
-    _pending_connection_events_rx: mpsc::Receiver<PendingConnection<T>>,
-    established_connection_events_tx: mpsc::Sender<EstablishedConnection<T>>,
-    established_connection_events_rx: mpsc::Receiver<EstablishedConnection<T>>,
+    pending_connection_events_tx: mpsc::Sender<PendingConnection<T, usize>>,
+    pending_connection_events_rx: mpsc::Receiver<PendingConnection<T, usize>>,
+    established_connection_events_tx: mpsc::Sender<EstablishedConnection<T, Id>>,
+    established_connection_events_rx: mpsc::Receiver<EstablishedConnection<T, Id>>,
 }
 
-impl<'b, T, U> Pool<T, U>
+impl<'b, T, InBound, Id> Pool<T, InBound, Id>
 where
 T: for <'a> ConnectionHandler<'a> + Debug + Send + Sync,
 // T: for <'a> ConnectionHandler<'a> + Debug + Sync + for <'a> ConnectionHandler<'a, OutEvent = T::<Self, 'a>>,
-U: Send + 'static + std::fmt::Debug
+InBound: Send + 'static + Debug,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
 {
-    pub fn new(_pool_id: usize, config: PoolConfig, _limits: PoolConnectionLimits) -> Pool<T, U> {
-        let (_pending_connection_events_tx, _pending_connection_events_rx) =
+    pub fn new(_pool_id: Id, config: PoolConfig, _limits: PoolConnectionLimits) -> Pool<T, InBound, Id> {
+        let (pending_connection_events_tx, pending_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         let (established_connection_events_tx, established_connection_events_rx) =
             mpsc::channel(config.task_event_buffer_size);
         Pool {
             _pool_id,
             counters: PoolConnectionCounters::default() ,
-            _pending: HashMap::new(),
+            pending: HashMap::new(),
             _established: HashMap::new(),
-            next_connection_id: ConnectionId::new(0),
             local_spawns: FuturesUnordered::new(),
             local_streams: SelectAll::new(),
             executor: None,
-            _pending_connection_events_tx,
-            _pending_connection_events_rx,
+            pending_connection_events_tx,
+            pending_connection_events_rx,
             established_connection_events_tx,
             established_connection_events_rx,
         }
@@ -163,15 +189,15 @@ U: Send + 'static + std::fmt::Debug
         self.spawn(Box::pin(conn));
         self.counters.pending_incoming += 1;
     }
-    pub fn eject_connection(&mut self) -> Next<mpsc::Receiver<EstablishedConnection<T>>> {
+    pub fn eject_connection(&mut self) -> Next<mpsc::Receiver<EstablishedConnection<T, Id>>> {
         self.established_connection_events_rx.next()
     }
 
-    pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = U >>>) {
+    pub fn collect_streams(&mut self, stream: Pin<Box<dyn futures::Stream<Item = InBound >>>) {
         self.local_streams.push(stream);
     }
 
-    pub async fn connect(&mut self) -> Poll<PoolConnection<T>> {
+    pub async fn connect(&mut self) -> Poll<PoolConnection<T, Id>> {
         match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
         {
             Poll::Ready(event) => { 
@@ -206,47 +232,57 @@ U: Send + 'static + std::fmt::Debug
            
     }
 
-    pub fn next_connection_id(&mut self) -> ConnectionId {
-        let res = self.next_connection_id;
-        self.next_connection_id = self.next_connection_id + 1;
-        res
-    }
-
-    pub fn next(&mut self) -> Next<SelectAll<Pin<Box<dyn futures::Stream<Item = U>>>>> {
+    pub fn next(&mut self) -> Next<SelectAll<Pin<Box<dyn futures::Stream<Item = InBound>>>>> {
         self.local_streams.next()
     }
 
-    pub async fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T>>>
+    pub async fn poll(&mut self, _cx: &mut Context<'_>) -> Poll<ConnectionHandlerOutEvent<PoolConnection<T, Id>>>
     {
-        #[cfg(debug_assertions)]
-        println!("Entering Pool poll.");
-        while let Some(s) = self.local_spawns.next().await {
-            let pool_connection = PoolConnection {
-                id: self.next_connection_id(),
-                state: Arc::new(Mutex::new(s))
+        loop {
+            if let Some(conn) = self.local_spawns.next().await {
+                self.pending_connection_events_tx.send(PendingConnection(PoolConnection{
+                    id: ConnectionId::new(0_usize), 
+                    state: Arc::new(Mutex::new(conn)),
+            }));
             };
-            #[cfg(debug_assertions)]
-            println!("Pool Connection {:?}", pool_connection);
-            self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
-            self.counters.established_incoming += 1;
-            self.counters.pending_incoming -= 1;             
+            break;
         };
+        Poll::Pending
+        // #[cfg(debug_assertions)]
+        // println!("Entering Pool poll.");
+        // while let Some(s) = self.local_spawns.next().await {
+        //     let pool_connection = PoolConnection {
+        //         id: self.next_connection_id(),
+        //         state: Arc::new(Mutex::new(s))
+        //     };
+        //     #[cfg(debug_assertions)]
+        //     println!("Pool Connection {:?}", pool_connection);
+        //     self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
+        //     self.counters.established_incoming += 1;
+        //     self.counters.pending_incoming -= 1;             
+        // };
 
-        if let Some(EstablishedConnection(c)) = self.eject_connection().await {
-            #[cfg(debug_assertions)]
-            println!("Connection Established.");
-            Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(c))
-        } else {
-            #[cfg(debug_assertions)]
-            println!("Connection Pending.");
-            Poll::Pending
-        }
+        // if let Some(EstablishedConnection(c)) = self.eject_connection().await {
+        //     #[cfg(debug_assertions)]
+        //     println!("Connection Established.");
+        //     Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(c))
+        // } else {
+        //     #[cfg(debug_assertions)]
+        //     println!("Connection Pending.");
+        //     Poll::Pending
+        // }
     }
 }
 
-pub struct PendingConnection<T: for <'a> ConnectionHandler<'a>> (PoolConnection<T>);
+pub struct PendingConnection<T, Id> (PoolConnection<T, Id>)
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>;
 
-pub struct EstablishedConnection<T: for<'a> ConnectionHandler<'a>> (PoolConnection<T>);
+pub struct EstablishedConnection<T, Id> (PoolConnection<T, Id>)
+where
+T: for <'a> ConnectionHandler<'a>,
+Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,;
 
 #[derive(Debug, Clone, Default)]
 pub struct PoolConnectionCounters {
