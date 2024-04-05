@@ -50,8 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         task_event_buffer_size: 1
     };
 
-    let mut bitstamp_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
-    let mut binance_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>> = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
+    let mut bitstamp_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>, usize> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default());
+    let mut binance_pool: Pool<WebSocketsMiddleware,Result<Message, tungstenite::Error>, usize> = Pool::new(0_usize, pool_config2, PoolConnectionLimits::default());
 
     bitstamp_pool.collect_streams(Box::pin(connection2.await?.get_stream()));
     binance_pool.collect_streams(Box::pin(connection1.await?.get_stream()));

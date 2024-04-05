@@ -96,8 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         task_event_buffer_size: 1
     };
 
-    let mut ws_pool: Pool<WebSocketsMiddleware, Interceptors> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default()); 
-    let mut grpc_pool: Pool<GrpcMiddleware,Interceptors> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
+    let mut ws_pool: Pool<WebSocketsMiddleware, Interceptors, usize> = Pool::new(0_usize, pool_config1, PoolConnectionLimits::default()); 
+    let mut grpc_pool: Pool<GrpcMiddleware,Interceptors, usize> = Pool::new(1_usize, pool_config2, PoolConnectionLimits::default());
 
 
     grpc_pool.inject_connection(grpc);
