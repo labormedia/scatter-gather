@@ -16,20 +16,20 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Connection {
-    pub id: ConnectionId<usize>,
+pub struct Connection<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> {
+    pub id: ConnectionId<Id>,
     pub source_type: NodeConfig,
 }
 
-impl PartialEq for Connection {
+impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> PartialEq for Connection<Id> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Eq for Connection {}
+impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> Eq for Connection<Id> {}
 
-impl Hash for Connection {
+impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> Hash for Connection<Id> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
@@ -39,15 +39,12 @@ impl Hash for Connection {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ConnectionId<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>>(pub Id);
 
-impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> ConnectionId<Id> {
-    /// Creates a unique id for a new connection
-    pub fn new(id:Id) -> ConnectionId<Id> {
-        Self(id)
-    }
-}
-
-impl ConnectionId<i32> {}
-impl ConnectionId<usize> {}
+// impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> ConnectionId<Id> {
+//     /// Creates a unique id for a new connection
+//     pub fn new(id: Id) -> ConnectionId<Id> {
+//         Self(id)
+//     }
+// }
 
 impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> Add<Id> for ConnectionId<Id>
 where 

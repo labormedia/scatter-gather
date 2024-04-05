@@ -132,15 +132,15 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
 {
     _pool_id: Id,
     counters: PoolConnectionCounters,
-    pending: HashMap<usize, Pin<Box<dyn Future<Output = PendingConnection<T, Id>> + Send>> >,
-    _established: HashMap<usize, EstablishedConnection<T, Id>>,
+    pending: HashMap<Id, Pin<Box<dyn Future<Output = PendingConnection<T, Id>> + Send>> >,
+    _established: HashMap<Id, EstablishedConnection<T, Id>>,
     // This spawner is for connections bounded to T: Connectionhandler
     pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type InBound
     pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = InBound>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
-    pending_connection_events_tx: mpsc::Sender<PendingConnection<T, usize>>,
-    pending_connection_events_rx: mpsc::Receiver<PendingConnection<T, usize>>,
+    pending_connection_events_tx: mpsc::Sender<PendingConnection<T, Id>>,
+    pending_connection_events_rx: mpsc::Receiver<PendingConnection<T, Id>>,
     established_connection_events_tx: mpsc::Sender<EstablishedConnection<T, Id>>,
     established_connection_events_rx: mpsc::Receiver<EstablishedConnection<T, Id>>,
 }
@@ -241,7 +241,7 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
         loop {
             if let Some(conn) = self.local_spawns.next().await {
                 self.pending_connection_events_tx.send(PendingConnection(PoolConnection{
-                    id: ConnectionId::new(0_usize), 
+                    id: ConnectionId(self._pool_id + self._pool_id), 
                     state: Arc::new(Mutex::new(conn)),
             }));
             };

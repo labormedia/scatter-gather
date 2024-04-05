@@ -60,6 +60,8 @@ use std::collections::VecDeque;
 pub mod schema_specific;
 const ADDRESS: &str = "http://[::1]:54001";
 
+type GrpcConnection = Connection<usize>;
+
 #[derive(Debug)]
 pub struct GrpcMiddleware {
     pub config: NodeConfig,
@@ -138,7 +140,7 @@ impl fmt::Display for ConnectionHandlerError {
 
 impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
     type InEvent = ConnectionHandlerOutEvent<Result<Summary, Status>>;
-    type OutEvent = ConnectionHandlerOutEvent<Connection>;
+    type OutEvent = ConnectionHandlerOutEvent<GrpcConnection>;
 
     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
@@ -154,11 +156,11 @@ impl<'b> ConnectionHandler<'b> for GrpcMiddleware {
     fn poll(
         self,
         _cx: &mut Context<'_>,
-    ) -> Poll<ConnectionHandlerOutEvent<Connection>> 
+    ) -> Poll<Self::OutEvent> 
     {
         // Poll::Ready(ConnectionHandlerOutEvent::ConnectionEvent(()))
-        let connection: Connection = Connection {
-            id : ConnectionId::new(1),
+        let connection: GrpcConnection = Connection {
+            id : ConnectionId(1),
             source_type: NodeConfig {
                 url: self.config.url.clone(),
                 prefix: self.config.prefix.clone(),

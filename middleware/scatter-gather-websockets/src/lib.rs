@@ -36,6 +36,7 @@ use std::{
     error::Error,
 };
 
+type WebSocketConnection = Connection<usize>;
 
 // Declares the middleware Factory with an associated generic type. 
 #[derive(Debug)]
@@ -113,7 +114,7 @@ impl fmt::Display for ConnectionHandlerError {
 // This will facilitate the integration with the other elements of the suite.
 impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
     type InEvent = ConnectionHandlerInEvent;
-    type OutEvent = ConnectionHandlerOutEvent<Connection>;
+    type OutEvent = ConnectionHandlerOutEvent<WebSocketConnection>;
 
     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(debug_assertions)]
@@ -130,8 +131,8 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
             _cx: &mut Context<'_>,
         ) -> Poll<Self::OutEvent> 
     {
-        let connection: Connection = Connection {
-            id : ConnectionId::new(0),
+        let connection: WebSocketConnection = Connection {
+            id : ConnectionId(0),
             source_type: self.config.clone(),
         };        
         let event = ConnectionHandlerOutEvent::ConnectionEvent(connection);
