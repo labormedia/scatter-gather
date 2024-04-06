@@ -36,15 +36,20 @@ impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> Hash for Conne
 }
 
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct ConnectionId<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>>(pub Id);
 
-// impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> ConnectionId<Id> {
-//     /// Creates a unique id for a new connection
-//     pub fn new(id: Id) -> ConnectionId<Id> {
-//         Self(id)
-//     }
-// }
+impl<Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id > > ConnectionId<Id> {
+    /// Creates a unique id for a new connection
+    pub fn new(id: Id) -> ConnectionId<Id> {
+        Self(id)
+    }
+
+    pub fn incr(&mut self) -> Self{
+        self.0 + self.0 + Id::from(true); // This is a hack to have a *one* element for the generic type Id.
+        *self
+    }
+}
 
 impl<Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>> Add<Id> for ConnectionId<Id>
 where 

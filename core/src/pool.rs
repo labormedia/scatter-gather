@@ -132,6 +132,7 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
 {
     _pool_id: Id,
     counters: PoolConnectionCounters,
+    last_connection_id: ConnectionId<Id>,
     pending: HashMap<Id, Pin<Box<dyn Future<Output = PendingConnection<T, Id>> + Send>> >,
     _established: HashMap<Id, EstablishedConnection<T, Id>>,
     // This spawner is for connections bounded to T: Connectionhandler
@@ -150,7 +151,7 @@ where
 T: for <'a> ConnectionHandler<'a> + Debug + Send + Sync,
 // T: for <'a> ConnectionHandler<'a> + Debug + Sync + for <'a> ConnectionHandler<'a, OutEvent = T::<Self, 'a>>,
 InBound: Send + 'static + Debug,
-Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
+Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
 {
     pub fn new(_pool_id: Id, config: PoolConfig, _limits: PoolConnectionLimits) -> Pool<T, InBound, Id> {
         let (pending_connection_events_tx, pending_connection_events_rx) =
@@ -159,7 +160,8 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
             mpsc::channel(config.task_event_buffer_size);
         Pool {
             _pool_id,
-            counters: PoolConnectionCounters::default() ,
+            counters: PoolConnectionCounters::default(),
+            last_connection_id: ConnectionId::default(),
             pending: HashMap::new(),
             _established: HashMap::new(),
             local_spawns: FuturesUnordered::new(),
@@ -188,6 +190,7 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
     pub fn inject_connection(&mut self, conn: impl Future<Output = T> + Send + 'static) {
         self.spawn(Box::pin(conn));
         self.counters.pending_incoming += 1;
+        self.last_connection_id.incr();
     }
     pub fn eject_connection(&mut self) -> Next<mpsc::Receiver<EstablishedConnection<T, Id>>> {
         self.established_connection_events_rx.next()
@@ -241,7 +244,7 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,
         loop {
             if let Some(conn) = self.local_spawns.next().await {
                 self.pending_connection_events_tx.send(PendingConnection(PoolConnection{
-                    id: ConnectionId(self._pool_id + self._pool_id), 
+                    id: ConnectionId(self._pool_id), 
                     state: Arc::new(Mutex::new(conn)),
             }));
             };
