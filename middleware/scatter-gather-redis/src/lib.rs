@@ -1,4 +1,10 @@
-use ::redis::{Client, aio::MultiplexedConnection};
+use std::{
+    error::Error,
+    fmt::{
+        self,
+    },
+};
+use redis::{Client, MultiplexedConnection};
 use scatter_gather_core::{
     connection::ConnectionHandlerOutEvent,
     middleware_interface::NodeConfig

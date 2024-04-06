@@ -45,8 +45,8 @@ impl<Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Outpu
         Self(id)
     }
 
-    pub fn incr(&mut self) -> Self{
-        self.0 + self.0 + Id::from(true); // This is a hack to have a *one* element for the generic type Id.
+    pub fn incr(&mut self) -> Self {
+        self.0 = self.0 + Id::from(true); // This is a hack to have a *one* element for the generic type Id.
         *self
     }
 }
@@ -93,4 +93,20 @@ pub trait ConnectionHandler<'a>: 'a + Send {
     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>>;
     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>>;
     fn as_any(&self) -> &dyn std::any::Any;
+}
+
+#[test]
+fn from_bool_is_one_for_numbers() {
+    assert_eq!(ConnectionId::<i8>(1).incr(), ConnectionId::<i8>(2));
+    assert_eq!(ConnectionId::<i16>(1).incr(), ConnectionId::<i16>(2));
+    assert_eq!(ConnectionId::<i32>(1).incr(), ConnectionId::<i32>(2));
+    assert_eq!(ConnectionId::<i64>(1).incr(), ConnectionId::<i64>(2));
+    assert_eq!(ConnectionId::<i128>(1).incr(), ConnectionId::<i128>(2));
+    assert_eq!(ConnectionId::<isize>(1).incr(), ConnectionId::<isize>(2));
+    assert_eq!(ConnectionId::<u8>(1).incr(), ConnectionId::<u8>(2));
+    assert_eq!(ConnectionId::<u16>(1).incr(), ConnectionId::<u16>(2));
+    assert_eq!(ConnectionId::<u32>(1).incr(), ConnectionId::<u32>(2));
+    assert_eq!(ConnectionId::<u64>(1).incr(), ConnectionId::<u64>(2));
+    assert_eq!(ConnectionId::<u128>(1).incr(), ConnectionId::<u128>(2));
+    assert_eq!(ConnectionId::<usize>(1).incr(), ConnectionId::<usize>(2));
 }

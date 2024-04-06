@@ -1,4 +1,4 @@
-use redis::{
+pub use redis::{
     aio::MultiplexedConnection,
     Client
 };

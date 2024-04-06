@@ -189,8 +189,7 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
     }
     pub fn inject_connection(&mut self, conn: impl Future<Output = T> + Send + 'static) {
         self.spawn(Box::pin(conn));
-        self.counters.pending_incoming += 1;
-        self.last_connection_id.incr();
+        self.counters.injected += 1;
     }
     pub fn eject_connection(&mut self) -> Next<mpsc::Receiver<EstablishedConnection<T, Id>>> {
         self.established_connection_events_rx.next()
@@ -289,6 +288,7 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,;
 
 #[derive(Debug, Clone, Default)]
 pub struct PoolConnectionCounters {
+    injected: u32,
     /// The effective connection limits.
     _limits: PoolConnectionLimits,
     /// The current number of incoming connections.
@@ -303,6 +303,7 @@ pub struct PoolConnectionCounters {
 
 #[derive(Debug, Clone)]
 pub struct PoolConnectionLimits {
+    _max_injected: Option<u32>,
     _max_pending_incoming: Option<u32>,
     _max_pending_outgoing: Option<u32>,
     _max_established_incoming: Option<u32>,
@@ -314,6 +315,7 @@ pub struct PoolConnectionLimits {
 impl Default for PoolConnectionLimits {
     fn default() -> Self {
         Self {
+            _max_injected: Some(10),
             _max_pending_incoming: Some(2),
             _max_pending_outgoing: Some(2),
             _max_established_incoming: Some(4),
