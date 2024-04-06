@@ -96,7 +96,7 @@ pub trait ConnectionHandler<'a>: 'a + Send {
 }
 
 #[test]
-fn from_bool_is_one_for_numbers() {
+fn from_true_is_one_for_scalars() {
     assert_eq!(ConnectionId::<i8>::default().incr(), ConnectionId::<i8>(1));
     assert_eq!(ConnectionId::<i16>::default().incr(), ConnectionId::<i16>(1));
     assert_eq!(ConnectionId::<i32>::default().incr(), ConnectionId::<i32>(1));
