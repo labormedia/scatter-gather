@@ -97,16 +97,16 @@ pub trait ConnectionHandler<'a>: 'a + Send {
 
 #[test]
 fn from_bool_is_one_for_numbers() {
-    assert_eq!(ConnectionId::<i8>(1).incr(), ConnectionId::<i8>(2));
-    assert_eq!(ConnectionId::<i16>(1).incr(), ConnectionId::<i16>(2));
-    assert_eq!(ConnectionId::<i32>(1).incr(), ConnectionId::<i32>(2));
-    assert_eq!(ConnectionId::<i64>(1).incr(), ConnectionId::<i64>(2));
-    assert_eq!(ConnectionId::<i128>(1).incr(), ConnectionId::<i128>(2));
-    assert_eq!(ConnectionId::<isize>(1).incr(), ConnectionId::<isize>(2));
-    assert_eq!(ConnectionId::<u8>(1).incr(), ConnectionId::<u8>(2));
-    assert_eq!(ConnectionId::<u16>(1).incr(), ConnectionId::<u16>(2));
-    assert_eq!(ConnectionId::<u32>(1).incr(), ConnectionId::<u32>(2));
-    assert_eq!(ConnectionId::<u64>(1).incr(), ConnectionId::<u64>(2));
-    assert_eq!(ConnectionId::<u128>(1).incr(), ConnectionId::<u128>(2));
-    assert_eq!(ConnectionId::<usize>(1).incr(), ConnectionId::<usize>(2));
+    assert_eq!(ConnectionId::<i8>::default().incr(), ConnectionId::<i8>(1));
+    assert_eq!(ConnectionId::<i16>::default().incr(), ConnectionId::<i16>(1));
+    assert_eq!(ConnectionId::<i32>::default().incr(), ConnectionId::<i32>(1));
+    assert_eq!(ConnectionId::<i64>::default().incr(), ConnectionId::<i64>(1));
+    assert_eq!(ConnectionId::<i128>::default().incr(), ConnectionId::<i128>(1));
+    assert_eq!(ConnectionId::<isize>::default().incr(), ConnectionId::<isize>(1));
+    assert_eq!(ConnectionId::<u8>::default().incr(), ConnectionId::<u8>(1));
+    assert_eq!(ConnectionId::<u16>::default().incr(), ConnectionId::<u16>(1));
+    assert_eq!(ConnectionId::<u32>::default().incr(), ConnectionId::<u32>(1));
+    assert_eq!(ConnectionId::<u64>::default().incr(), ConnectionId::<u64>(1));
+    assert_eq!(ConnectionId::<u128>::default().incr(), ConnectionId::<u128>(1));
+    assert_eq!(ConnectionId::<usize>::default().incr(), ConnectionId::<usize>(1));
 }
