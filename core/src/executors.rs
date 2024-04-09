@@ -15,16 +15,27 @@ use std::sync::{
 };
 
 pub struct CustomExecutor<T> {
-    pub executor: SyncSender<T>,
+    executor: SyncSender<Pin<Box<(dyn futures::Future<Output = T> + std::marker::Send + 'static)>>>,
+    pub receiver: Receiver<Pin<Box<(dyn futures::Future<Output = T> + std::marker::Send + 'static)>>>,
+}
+
+impl<T> CustomExecutor<T> {
+    pub fn new() -> Self {
+        const MAX_QUEUED_TASKS: usize = 10;
+        let (executor, receiver) = sync_channel(MAX_QUEUED_TASKS);
+        CustomExecutor {
+            executor,
+            receiver,
+        }
+    }
 }
 
 impl<T: Send + Sync + 'static> Executor<T> for CustomExecutor<T> {
     fn exec(&self, f: Pin<Box<dyn Future<Output = T> + Send>>) {
-        const MAX_QUEUED_TASKS: usize = 10;
-        let (task_sender, ready_queue) = sync_channel(MAX_QUEUED_TASKS);
+        
         #[cfg(debug_assertions)]
         println!("-------------threadpool-start.--------------");
-        task_sender.clone().send(f).expect("Queue not available.");
+        self.executor.clone().send(f).expect("Queue not available.");
         #[cfg(debug_assertions)]
         println!("-------------threadpool-end.--------------");
     }

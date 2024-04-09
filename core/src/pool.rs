@@ -139,9 +139,9 @@ Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id> + 'static,
     pending: HashMap<ConnectionId<Id>, PendingConnection<T, Id> >,
     established: HashMap<ConnectionId<Id>, EstablishedConnection<T, Id> >,
     // This spawner is for connections bounded to T: Connectionhandler
-    pub local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
+    local_spawns: FuturesUnordered<Pin<Box<dyn Future<Output = T> + Send>>>,
     // These streams are for the incoming data streams of type InBound
-    pub local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = InBound>>>>,
+    local_streams: SelectAll<Pin<Box<dyn futures::Stream<Item = InBound>>>>,
     executor: Option<Box<dyn Executor<T> + Send>>,
     pending_connection_events_tx: mpsc::SyncSender<ConnectionId<Id>>,
     pending_connection_events_rx: mpsc::Receiver<ConnectionId<Id>>,
@@ -203,20 +203,23 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
     }
 
     pub async fn connect(&mut self) -> Poll<Vec<ConnectionId<Id>>> {
-        match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
-        {
-            Poll::Ready(connections) => { 
-                #[cfg(debug_assertions)]
-                println!("Poll Ready... : {connections:?}");
-                Poll::Ready(connections)
+        loop {
+            match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
+            {
+                Poll::Ready(connections) => { 
+                    #[cfg(debug_assertions)]
+                    println!("Poll Ready... : {connections:?}");
+                    return Poll::Ready(connections)
+    
+                }
+                Poll::Pending => { 
+                    #[cfg(debug_assertions)]
+                    println!("Poll pending...");
+                    // Poll::Pending
+                },
+            } 
+        }
 
-            }
-            Poll::Pending => { 
-                #[cfg(debug_assertions)]
-                println!("Poll pending...");
-                Poll::Pending
-            },
-        } 
     }
 
     pub fn get_established_connection(&self, id: ConnectionId<Id>) -> Option<&PoolConnection<T, Id>> {
@@ -224,6 +227,10 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
             Some(EstablishedConnection(pool_connection)) => Some(pool_connection),
             None => None,
         }
+    }
+
+    pub fn get_executor(&self) -> &Option<Box<dyn Executor<T> + Send>> {
+        &self.executor
     }
 
     pub async fn intercept_stream(&mut self) {
@@ -240,7 +247,7 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
         self.local_streams.next()
     }
 
-    pub async fn poll<'a>(&mut self, _cx: &mut Context<'a>) -> Poll<Vec<ConnectionId<Id>>>
+    async fn poll<'a>(&mut self, _cx: &mut Context<'a>) -> Poll<Vec<ConnectionId<Id>>>
     where Id: 'a
     {
         let mut result = Vec::new();
@@ -277,11 +284,9 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
                     self.counters.established_incoming += 1;
                     result.push(id_clone);
                 } else { break Poll::Ready(result); }
-            } else if result.len() > 0 {
-                break Poll::Ready(result);
             } else
             {
-                // break Poll::Pending;
+                break Poll::Ready(result);
             };
         }
         // #[cfg(debug_assertions)]

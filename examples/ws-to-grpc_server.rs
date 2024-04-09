@@ -57,14 +57,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             .get_stream()
             .map(|result| result.unwrap().into_text().unwrap())
             .map(|text| {
-                println!("Input test from Binance: {:?}", text);
                 Interceptors::Binance(BinanceDepthInterceptor::intercept(text)) 
             });
     let bitstamp_intercepted =
         bitstamp
             .get_stream()
             .map( |result| result.unwrap().into_text().unwrap())
-            .map(|text| Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) );
+            .map(|text| 
+                Interceptors::Bitstamp(BitstampDepthInterceptor::intercept(text)) 
+            );
 
     let grpc_config: NodeConfig = NodeConfig { // handler: Interceptors::Depth
         url: String::from("[::1]:54001"), 
