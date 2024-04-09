@@ -1,6 +1,9 @@
 use futures::{
     Stream,
-    stream::SplitStream,
+    stream::{
+        SplitStream,
+        Next,
+    },
 };
 
 pub trait Interceptor: Send {
@@ -45,4 +48,5 @@ where
     T: Stream,
 {
     fn get_stream(self) -> SplitStream<T>;
+    fn next(&mut self) -> Next<'_, SplitStream<T> >;
 }

@@ -32,7 +32,7 @@ use core::{
 use futures::{
     Future,
     StreamExt, SinkExt,
-    stream::{SplitSink, SplitStream},
+    stream::{SplitSink, SplitStream, Next,},
     Stream,
 };
 use std::{
@@ -163,5 +163,8 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
 impl GetStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>> for WebSocketsMiddleware {
     fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>> {
         self.read
+    }
+    fn next<'a>(&'a mut self) -> Next<'a,SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>> > {
+        self.read.next()
     }
 }

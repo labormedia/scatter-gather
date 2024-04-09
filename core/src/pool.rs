@@ -208,15 +208,6 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
 
     pub fn drain_established_streams(mut self) -> Vec<(ConnectionId<Id>, EstablishedConnection<T, Id>)> {
         self.established.drain().collect()
-            // .map( |(_id, EstablishedConnection(
-            //     PoolConnection {
-            //         id: _,
-            //         conn,
-            //     }
-            // ))| async move {
-            //     // self.collect_streams(Box::pin(conn.lock().await.deref().get_stream()));
-            //     Box::pin(conn.clone().lock().await.deref().get_stream())
-            // });
     }
 
     pub async fn connect(&mut self) -> Poll<Vec<ConnectionId<Id>>> {
@@ -306,29 +297,6 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
                 break Poll::Ready(result);
             };
         }
-        // #[cfg(debug_assertions)]
-        // println!("Entering Pool poll.");
-        // while let Some(s) = self.local_spawns.next().await {
-        //     let pool_connection = PoolConnection {
-        //         id: self.next_connection_id(),
-        //         state: Arc::new(Mutex::new(s))
-        //     };
-        //     #[cfg(debug_assertions)]
-        //     println!("Pool Connection {:?}", pool_connection);
-        //     self.established_connection_events_tx.send(EstablishedConnection(pool_connection) ).await.expect("Could not send established connection.");
-        //     self.counters.established_incoming += 1;
-        //     self.counters.pending_incoming -= 1;             
-        // };
-
-        // if let Some(EstablishedConnection(c)) = self.eject_connection().await {
-        //     #[cfg(debug_assertions)]
-        //     println!("Connection Established.");
-        //     Poll::Ready(ConnectionHandlerOutEvent::ConnectionEstablished(c))
-        // } else {
-        //     #[cfg(debug_assertions)]
-        //     println!("Connection Pending.");
-        //     Poll::Pending
-        // }
     }
 }
 
