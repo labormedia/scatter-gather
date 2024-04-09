@@ -4,7 +4,9 @@ use futures::{
 };
 use scatter_gather_core::{
     middleware_interface::{
-        NodeConfig, Interceptor,
+        NodeConfig, 
+        Interceptor,
+        GetStream,
     },
     pool::{
         Pool,
@@ -97,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     match connections {
         Poll::Ready(conn) => {
             println!("Buffering.");
-            let mut conn_lock = grpc_pool.get_established_connection(conn[0]).expect("Could not connect.").conn.lock().await;
+            let mut conn_lock = grpc_pool.get_established_connection(&conn[0]).expect("Could not connect.").conn.lock().await;
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
                 #[cfg(debug_assertions)]

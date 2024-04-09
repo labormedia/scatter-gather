@@ -1,6 +1,7 @@
 use scatter_gather_core::{
     middleware_interface::{
         NodeConfig,
+        GetStream,
     },
     pool::{
         Pool,

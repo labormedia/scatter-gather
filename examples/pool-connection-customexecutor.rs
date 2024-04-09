@@ -6,11 +6,15 @@ use scatter_gather_core::{
     Executor,
     middleware_interface::{
         NodeConfig,
+        GetStream,
     },
     pool::{
         Pool,
         PoolConfig,
         PoolConnectionLimits,
+        PoolConnection,
+        EstablishedConnection,
+
     },
     connection::{
         ConnectionId,
@@ -22,8 +26,13 @@ use scatter_gather_core::{
 use futures::{
     executor::ThreadPool,
     StreamExt,
+    stream::SplitStream,
 };
-use scatter_gather_websockets::WebSocketsMiddleware;
+use scatter_gather_websockets::{
+    WebSocketsMiddleware,
+    WebSocketStream,
+    MaybeTlsStream,
+};
 use scatter_gather_grpc::GrpcMiddleware;
 mod source_specs;
 use source_specs::{
@@ -31,7 +40,10 @@ use source_specs::{
     bitstamp::BitstampDepthInterceptor,
 };
 use tungstenite::Message;
-use std::any::type_name;
+use std::{
+    sync::mpsc::sync_channel,
+    any::type_name,
+};
 
 fn type_of<T>(_: T) -> &'static str {
     type_name::<T>()
@@ -92,26 +104,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         ws_pool.inject_connection(WebSocketsMiddleware::new(config.clone()));
     } );
 
+    const MAX_QUEUED_TASKS: usize = 10;
+    let (executor, receiver) = sync_channel(MAX_QUEUED_TASKS);
+    let custom_executor = CustomExecutor::with_sender(executor);
+
     ws_pool.with_executor(
-        Box::new(CustomExecutor::new())
+        Box::new(custom_executor)
     );
     
     match ws_pool.connect().await {
         Poll::Ready(connections) => {
-            for conn in connections {
+            connections.iter()
+            .map(|conn| async {
                 let mut conn_lock = ws_pool.get_established_connection(conn).expect("Could not connect.").conn.lock().await;
-                conn_lock.init_handle().await?;
-            };
+                conn_lock
+            })
+            .map( |conn| {
+                conn
+            });
         },
         _ => {},
     }
 
-    let Some(executor): &Option<Box<dyn Executor<WebSocketsMiddleware> + std::marker::Send >> = ws_pool.get_executor()
-    else { todo!() };;
+    // let Some(executor): &Option<Box<dyn Executor<WebSocketsMiddleware> + std::marker::Send >> = ws_pool.get_executor()
+    // else { todo!() };
 
-    // loop {
-    //     println!("Incoming Bitstamp{:?}", executor.receiver.next().await);
-    // }
+
 
     // if let (Poll::Ready(e1), Poll::Ready(e2)) = (binance_conn,bitstamp_conn) { // the condition will advance if both connections are established
     //     let mut init_binance_ws = e1.conn.clone();

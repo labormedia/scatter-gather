@@ -16,7 +16,6 @@ use std::sync::{
 
 pub struct CustomExecutor<T> {
     executor: SyncSender<Pin<Box<(dyn futures::Future<Output = T> + std::marker::Send + 'static)>>>,
-    pub receiver: Receiver<Pin<Box<(dyn futures::Future<Output = T> + std::marker::Send + 'static)>>>,
 }
 
 impl<T> CustomExecutor<T> {
@@ -25,7 +24,11 @@ impl<T> CustomExecutor<T> {
         let (executor, receiver) = sync_channel(MAX_QUEUED_TASKS);
         CustomExecutor {
             executor,
-            receiver,
+        }
+    }
+    pub fn with_sender(sender: SyncSender<Pin<Box<(dyn futures::Future<Output = T> + std::marker::Send + 'static)>>>) -> Self {
+        CustomExecutor {
+            executor: sender,
         }
     }
 }

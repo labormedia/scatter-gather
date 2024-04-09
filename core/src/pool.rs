@@ -2,13 +2,14 @@
 /// for the specific Connection::source_type::handler.
 /// 
 /// 
-use super::{
+use crate::{
     Executor,
     connection::{
         ConnectionId,
         ConnectionHandler,
         ConnectionHandlerOutEvent
     },
+    middleware_interface::GetStream,
 };
 use std::{
     collections::HashMap,
@@ -25,7 +26,10 @@ use std::{
     error::Error,
 };
 use core::{
-    ops::Add,
+    ops::{
+        Add,
+        Deref,
+    },
     task::{
         Poll,
         Context
@@ -202,6 +206,19 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
         self.local_streams.push(stream);
     }
 
+    pub fn drain_established_streams(mut self) -> Vec<(ConnectionId<Id>, EstablishedConnection<T, Id>)> {
+        self.established.drain().collect()
+            // .map( |(_id, EstablishedConnection(
+            //     PoolConnection {
+            //         id: _,
+            //         conn,
+            //     }
+            // ))| async move {
+            //     // self.collect_streams(Box::pin(conn.lock().await.deref().get_stream()));
+            //     Box::pin(conn.clone().lock().await.deref().get_stream())
+            // });
+    }
+
     pub async fn connect(&mut self) -> Poll<Vec<ConnectionId<Id>>> {
         loop {
             match self.poll(&mut Context::from_waker(futures::task::noop_waker_ref())).await
@@ -222,7 +239,7 @@ Id: Default + From<bool> + Eq + Hash + PartialEq + Copy + Debug + Add<Output = I
 
     }
 
-    pub fn get_established_connection(&self, id: ConnectionId<Id>) -> Option<&PoolConnection<T, Id>> {
+    pub fn get_established_connection(&self, id: &ConnectionId<Id>) -> Option<&PoolConnection<T, Id>> {
         match self.established.get(&id) {
             Some(EstablishedConnection(pool_connection)) => Some(pool_connection),
             None => None,
@@ -320,7 +337,7 @@ where
 T: for <'a> ConnectionHandler<'a>,
 Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>;
 
-pub struct EstablishedConnection<T, Id> (PoolConnection<T, Id>)
+pub struct EstablishedConnection<T, Id> (pub PoolConnection<T, Id>)
 where
 T: for <'a> ConnectionHandler<'a>,
 Id: Eq + Hash + PartialEq + Copy + Debug + Add<Output = Id>,;

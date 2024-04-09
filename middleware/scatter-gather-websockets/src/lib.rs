@@ -1,5 +1,8 @@
 use scatter_gather_core as sgc;
-use scatter_gather_core::middleware_interface::NodeConfig;
+use scatter_gather_core::middleware_interface::{
+    NodeConfig,
+    GetStream,
+};
 use sgc::connection::{
     Connection,
     ConnectionId,
@@ -7,7 +10,7 @@ use sgc::connection::{
     ConnectionHandlerOutEvent, 
     ConnectionHandler
 };
-use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
+pub use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tokio_tungstenite::{
     connect_async, 
     tungstenite::{
@@ -30,6 +33,7 @@ use futures::{
     Future,
     StreamExt, SinkExt,
     stream::{SplitSink, SplitStream},
+    Stream,
 };
 use std::{
     fmt,
@@ -94,10 +98,6 @@ impl WebSocketsMiddleware {
         println!("message sent.");
         Ok(())
     }
-
-    pub fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>> {
-        self.read
-    }
 }
 
 // Define possible errors.
@@ -160,3 +160,8 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
     }
 }
 
+impl GetStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>> for WebSocketsMiddleware {
+    fn get_stream(self) -> SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>> {
+        self.read
+    }
+}

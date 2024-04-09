@@ -1,3 +1,8 @@
+use futures::{
+    Stream,
+    stream::SplitStream,
+};
+
 pub trait Interceptor: Send {
     type Input;
     type Output;
@@ -33,4 +38,11 @@ impl NodeConfig {
             }
         }
     }
+}
+
+pub trait GetStream<T>
+where
+    T: Stream,
+{
+    fn get_stream(self) -> SplitStream<T>;
 }

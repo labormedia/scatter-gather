@@ -2,6 +2,7 @@ use scatter_gather_core::{
     middleware_interface::{
         NodeConfig, 
         Interceptor,
+        GetStream,
     },
 };
 use scatter_gather_websockets::WebSocketsMiddleware;
