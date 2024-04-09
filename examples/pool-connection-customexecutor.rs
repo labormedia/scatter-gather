@@ -111,14 +111,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     // let binance_conn = binance_pool.connect().await;
 
     // if let (Poll::Ready(e1), Poll::Ready(e2)) = (binance_conn,bitstamp_conn) { // the condition will advance if both connections are established
-    //     let mut init_binance_ws = e1.state.clone();
+    //     let mut init_binance_ws = e1.conn.clone();
     //     init_binance_ws.lock().await.init_handle().await?;
-    //     let read_binance_ws = e1.state.clone();
+    //     let read_binance_ws = e1.conn.clone();
     //     let binance_stream = &mut read_binance_ws.lock().await.read;
 
-    //     let mut init_bitstamp_ws = e2.state.clone();
+    //     let mut init_bitstamp_ws = e2.conn.clone();
     //     init_bitstamp_ws.lock().await.init_handle().await?;
-    //     let read_bitstamp_ws = e2.state.clone();
+    //     let read_bitstamp_ws = e2.conn.clone();
     //     let bitstamp_stream = &mut read_bitstamp_ws.lock().await.read;
 
     //     loop {

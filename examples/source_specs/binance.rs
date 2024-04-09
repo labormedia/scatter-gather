@@ -98,38 +98,38 @@ impl Interceptor for BinanceDepthInterceptor {
     }
 }
 
-impl ConnectionHandler<'_> for BinanceDepthInterceptor {
-    type InEvent = connection::ConnectionHandlerInEvent;
-    type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
+// impl ConnectionHandler<'_> for BinanceDepthInterceptor {
+//     type InEvent = connection::ConnectionHandlerInEvent;
+//     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
-    fn poll(
-        self,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Self::OutEvent> 
-    {
-        // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
-        Poll::Pending
-    }
-    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
-        #[cfg(debug_assertions)]
-        println!("Hello Future! InEvent: {:?}", event);
-        Ok(())
-    }
-    fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
-        #[cfg(debug_assertions)]
-        println!("Hello Future! OutEvent: {:?}", event);
-        Ok(())
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self as _
-    }
-}
+//     fn poll(
+//         self,
+//         _cx: &mut Context<'_>,
+//     ) -> Poll<Self::OutEvent> 
+//     {
+//         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
+//         Poll::Pending
+//     }
+//     fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
+//         #[cfg(debug_assertions)]
+//         println!("Hello Future! InEvent: {:?}", event);
+//         Ok(())
+//     }
+//     fn eject_event(&mut self, event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
+//         #[cfg(debug_assertions)]
+//         println!("Hello Future! OutEvent: {:?}", event);
+//         Ok(())
+//     }
+//     fn as_any(&self) -> &dyn std::any::Any {
+//         self as _
+//     }
+// }
 
-impl Future for BinanceDepthInterceptor {
-    type Output = &'static dyn Depth<Level>;
+// impl Future for BinanceDepthInterceptor {
+//     type Output = &'static dyn Depth<Level>;
 
-    fn poll(mut self: std::pin::Pin<&mut Self>, _cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        self.inject_event(ConnectionHandlerInEvent::Connect).expect("Couldn't inject event.");
-        Poll::Pending
-    }
-}
+//     fn poll(mut self: std::pin::Pin<&mut Self>, _cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+//         self.inject_event(ConnectionHandlerInEvent::Connect).expect("Couldn't inject event.");
+//         Poll::Pending
+//     }
+// }

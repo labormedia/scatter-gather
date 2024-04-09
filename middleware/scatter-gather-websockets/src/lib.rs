@@ -54,7 +54,7 @@ impl WebSocketsMiddleware {
         Self::spin_up(config).await.expect("Couldn't build Middleware.")
     }
 
-    pub async fn connect<T>(config: NodeConfig) -> Pin<Box<dyn Future<Output = Result<(WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Response<()>), tokio_tungstenite::tungstenite::Error>> + Send>>
+    pub async fn connect(config: NodeConfig) -> Pin<Box<dyn Future<Output = Result<(WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Response<()>), tokio_tungstenite::tungstenite::Error>> + Send>>
     {
         Box::pin(connect_async(config.url))
     }
@@ -63,16 +63,21 @@ impl WebSocketsMiddleware {
         Ok(Self::spin_up(config).await?)
     }
 
-    pub async fn init_handle(&mut self) -> Result<(), Box<dyn std::error::Error>>{
+    pub async fn try_connect(config: NodeConfig) -> Result<Pin<Box<dyn Future<Output = Result<(WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Response<()>), tokio_tungstenite::tungstenite::Error> > + Send>>, Box<dyn Error + Send>> {
+        Ok(Box::pin(connect_async(config.url)))
+    }
+
+    pub async fn init_handle(&mut self) -> Result<(), Box<dyn Error>>{
         if let Some(init_handle) = &self.config.init_handle {
             self.write.send(Message::Text(init_handle.to_string())).await?;
         };
         Ok(())
     }
     
-    async fn spin_up(config: NodeConfig) -> Result<Self, Box<dyn std::error::Error>>
+    pub async fn spin_up(config: NodeConfig) -> Result<Self, tokio_tungstenite::tungstenite::Error>
     {
         let (ws_stream,_b) = connect_async(&config.url).await?;
+        // let (ws_stream, _) = (Self::try_connect(config.clone()).await?).await.unwrap();
         let (mut write,read) = ws_stream.split();
         let mut new_ws = Self {
                 config,
@@ -83,7 +88,7 @@ impl WebSocketsMiddleware {
         Ok(new_ws)
     }
 
-    pub async fn send(&mut self, msg: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn send(&mut self, msg: String) -> Result<(), Box<dyn Error>> {
         let _ = self.write.send(Message::Text(msg)).await?;
         #[cfg(debug_assertions)]
         println!("message sent.");
@@ -116,13 +121,24 @@ impl<'b> ConnectionHandler<'b> for WebSocketsMiddleware {
     type InEvent = ConnectionHandlerInEvent;
     type OutEvent = ConnectionHandlerOutEvent<WebSocketConnection>;
 
-    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
+    fn inject_event(&mut self, event: Self::InEvent) -> Result<(), Box<dyn Error>> {
         #[cfg(debug_assertions)]
         println!("Inject debug: InEvent: {:?}", event);
+        match event {
+            ConnectionHandlerInEvent::Connect => {
+
+            },
+            ConnectionHandlerInEvent::Disconnect => {
+
+            },
+            ConnectionHandlerInEvent::Intercept => {
+
+            },
+        };
         Ok(())
     }
 
-    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
+    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
 

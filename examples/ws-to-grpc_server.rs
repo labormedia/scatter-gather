@@ -90,10 +90,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     ws_pool.collect_streams(Box::pin(binance_intercepted));
     ws_pool.collect_streams(Box::pin(bitstamp_intercepted));
 
-    match grpc_pool.connect().await {
+    let connections = grpc_pool.connect().await;
+    #[cfg(debug_assertions)]
+    println!("Connections: {:?}", connections);
+    match connections {
         Poll::Ready(conn) => {
             println!("Buffering.");
-            let mut conn_lock = conn.state.lock().await;
+            let mut conn_lock = grpc_pool.get_established_connection(conn[0]).expect("Could not connect.").conn.lock().await;
             while let Some(intercepted) = ws_pool.next().await // let's bench here.
             {
                 #[cfg(debug_assertions)]

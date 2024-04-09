@@ -80,26 +80,26 @@ impl Interceptor for BitstampDepthInterceptor {
     }
 }
 
-impl ConnectionHandler<'_> for BitstampDepthInterceptor {
-    type InEvent = connection::ConnectionHandlerInEvent;
-    type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
+// impl ConnectionHandler<'_> for BitstampDepthInterceptor {
+//     type InEvent = connection::ConnectionHandlerInEvent;
+//     type OutEvent = connection::ConnectionHandlerOutEvent<Message>;
 
-    fn poll(
-        self,
-        _cx: &mut Context<'_>,
-    ) -> Poll<Self::OutEvent>
-    {
-        // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
-        Poll::Pending
-    }
-    fn inject_event(&mut self, _event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
-    }
-    fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self as _
-    }
-}
+//     fn poll(
+//         self,
+//         _cx: &mut Context<'_>,
+//     ) -> Poll<Self::OutEvent>
+//     {
+//         // Poll::Ready(connection::ConnectionHandlerOutEvent::ConnectionClosed(Message::Text("hello".to_string())))
+//         Poll::Pending
+//     }
+//     fn inject_event(&mut self, _event: Self::InEvent) -> Result<(), Box<dyn std::error::Error>> {
+//         Ok(())
+//     }
+//     fn eject_event(&mut self, _event: Self::OutEvent) -> Result<(), Box<dyn std::error::Error>> {
+//         Ok(())
+//     }
+//     fn as_any(&self) -> &dyn std::any::Any {
+//         self as _
+//     }
+// }
 
