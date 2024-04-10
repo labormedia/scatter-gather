@@ -102,36 +102,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         _ => {},
     }
 
-    while let mut middleware = receiver.recv()?.await {
-        while let Some(data) = middleware.next().await {
-            #[cfg(debug_assertions)]
-            println!("Received middlware data: {:?}", data);
-        };
+    let mut connections = Vec::new();
+    while let Ok(middleware) = receiver.try_recv() {
+        connections.push(middleware.await);
     }
 
-    // let Some(executor): &Option<Box<dyn Executor<WebSocketsMiddleware> + std::marker::Send >> = ws_pool.get_executor()
-    // else { todo!() };
-
-
-
-    // if let (Poll::Ready(e1), Poll::Ready(e2)) = (binance_conn,bitstamp_conn) { // the condition will advance if both connections are established
-    //     let mut init_binance_ws = e1.conn.clone();
-    //     init_binance_ws.lock().await.init_handle().await?;
-    //     let read_binance_ws = e1.conn.clone();
-    //     let binance_stream = &mut read_binance_ws.lock().await.read;
-
-    //     let mut init_bitstamp_ws = e2.conn.clone();
-    //     init_bitstamp_ws.lock().await.init_handle().await?;
-    //     let read_bitstamp_ws = e2.conn.clone();
-    //     let bitstamp_stream = &mut read_bitstamp_ws.lock().await.read;
-
-    //     loop {
-    //         println!("Incoming Bitstamp{:?}", bitstamp_stream.next().await);
-    //         println!("Incoming Binance{:?}", binance_stream.next().await);
-    //     }
-    // }
-
-    
+    loop {
+        let mut i = 0;
+        for mut conn in &mut connections {
+            if let Some(data) = conn.next().await {
+                #[cfg(debug_assertions)]
+                println!("Incoming data (Stream {}) {:?}", i, data);
+            };
+            i = 1;
+        }
+    }
 
     Ok(())
 }
