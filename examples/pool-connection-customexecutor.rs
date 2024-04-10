@@ -87,20 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         ws_pool.inject_connection(WebSocketsMiddleware::new(config.clone()));
     } );
     
-    match ws_pool.connect().await {
-        Poll::Ready(established) => {
-            let connections = established
-                .iter()
-                .map(|conn| {
-                    let mut conn_lock = ws_pool.get_established_connection(conn).expect("Could not connect.").conn.lock();
-                    conn_lock
-                });
-            for conn in connections {
-                conn.await.deref();
-            }
-        },
-        _ => {},
-    }
+    let _ = ws_pool.connect().await;
 
     let mut connections = Vec::new();
     while let Ok(middleware) = receiver.try_recv() {
