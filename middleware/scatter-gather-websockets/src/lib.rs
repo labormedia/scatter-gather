@@ -88,7 +88,7 @@ impl WebSocketsMiddleware {
                 write,
                 read
             };
-        new_ws.init_handle().await;
+        new_ws.init_handle().await.expect("Could not initialize middleware channel.");  // TODO: Handle error.
         Ok(new_ws)
     }
 
