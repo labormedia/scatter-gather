@@ -18,6 +18,8 @@ ed25519-dalek = "1.0.1"
 prost = "0.11"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
+rayon = { version = "1.7", optional = true }
+tokio = { version= "1.0", features = ["full"], optional = true }
 
 [dev-dependencies]
 base64 = "0.13.0"
@@ -27,3 +29,9 @@ prost-build = "0.11"
 
 [features]
 serde = []
+tokio = ["dep:tokio"]
+dht = ["dep:rayon"]
+
+[[example]]
+name = "basic-dht-simulation"
+required-features = ["dht", "tokio"]

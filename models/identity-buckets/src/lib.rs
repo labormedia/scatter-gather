@@ -6,3 +6,6 @@ pub mod keys_proto {
 pub mod identity;
 pub mod peer_id;
 pub mod xor;
+
+#[cfg(feature="dht")]
+pub mod dht;
