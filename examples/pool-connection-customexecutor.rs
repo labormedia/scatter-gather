@@ -1,9 +1,4 @@
-use core::task::{
-    Context,
-    Poll,
-};
 use scatter_gather_core::{
-    Executor,
     middleware_interface::{
         NodeConfig,
         GetStream,
@@ -12,43 +7,12 @@ use scatter_gather_core::{
         Pool,
         PoolConfig,
         PoolConnectionLimits,
-        PoolConnection,
-        EstablishedConnection,
-
-    },
-    connection::{
-        ConnectionId,
-        ConnectionHandler,
-        ConnectionHandlerOutEvent,
     },
     executors::CustomExecutor,
 };
-use futures::{
-    executor::ThreadPool,
-    StreamExt,
-    stream::SplitStream,
-};
-use scatter_gather_websockets::{
-    WebSocketsMiddleware,
-    WebSocketStream,
-    MaybeTlsStream,
-};
-use scatter_gather_grpc::GrpcMiddleware;
-mod source_specs;
-use source_specs::{
-    binance::BinanceDepthInterceptor,
-    bitstamp::BitstampDepthInterceptor,
-};
+use scatter_gather_websockets::WebSocketsMiddleware;
 use tungstenite::Message;
-use std::{
-    sync::mpsc::sync_channel,
-    any::type_name,
-    ops::Deref,
-};
-
-fn type_of<T>(_: T) -> &'static str {
-    type_name::<T>()
-}
+use std::sync::mpsc::sync_channel;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
