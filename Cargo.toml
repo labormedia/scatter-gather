@@ -6,13 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-futures = "0.3"
 scatter-gather-core = { path = "core" }
 identity-buckets = { path = "models/identity-buckets" }
 scatter-gather-websockets = { path = "middleware/scatter-gather-websockets" }
 scatter-gather-grpc = { path = "middleware/scatter-gather-grpc" }
 
 [dev-dependencies]
+futures = "0.3"
 tonic = "0.8"
 prost = { version = "0.11"}
 rand = { version = "0.8"}
@@ -30,7 +30,7 @@ members = [
     "middleware/scatter-gather-grpc",
     "middleware/scatter-gather-websockets",
     "middleware/scatter-gather-redis",
-#    "models",
+    "models/identity-buckets",
 ]
 exclude = [ 
     "models" 
