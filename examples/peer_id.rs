@@ -43,8 +43,8 @@ fn generating_sequential(size: usize) -> Result<(), Box<dyn std::error::Error>> 
     let mut count_a = 0;
     let mut count_b = 0;
     let first = PeerId::random();
+    let first_key = xor::Key::from(first);
     for _i in 0..size as u8 {
-        let first_key = xor::Key::from(first);
         let a = PeerId::random();
         let b = PeerId::random();
         let a_key = xor::Key::from(a);
