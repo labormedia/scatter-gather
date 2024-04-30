@@ -24,60 +24,106 @@ impl DHT {
             routes: HashMap::new()
         }
     }
-    pub fn routing(mut self, collection: Vec<PeerId>, router_size: usize) -> Result<Self, Box<dyn std::error::Error>> {
-        self.routes = collection
-                .iter()
-                .map(|peer_id| {
-                    let rng = &mut rand::thread_rng();
-                    #[cfg(feature="rayon")]
-                    let router_list: Vec<PeerId> = collection
-                        .choose_multiple(rng, router_size)
-                        .par_bridge()
-                        .into_par_iter()
-                        .map(|x| {
-                            *x
-                        })
-                        .collect();
-                    #[cfg(not(feature="rayon"))]
-                    let router_list: Vec<PeerId> = collection
-                        .choose_multiple(rng, router_size)
-                        .into_iter()
-                        .map(|x| {
-                            *x
-                        })
-                        .collect();
-                    (*peer_id, router_list)
-                })
-                .fold( HashMap::new(),
-                    | mut a: HashMap<PeerId, Vec<Route>>, peer_id: (PeerId, Vec<PeerId>)|
-                    {
-                        let router_id = peer_id.0;
-                        let router_key = Key::from(router_id);
-                        let rng = &mut rand::thread_rng();
-                        #[cfg(feature="rayon")]
-                        let candidate_list = collection
-                            .choose_multiple(rng, router_size)
-                            .par_bridge()
-                            .into_par_iter()
-                            .map(|peer_id| {
-                                Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
-                            })
-                            .collect();
-                        #[cfg(not(feature="rayon"))]
-                        let candidate_list = collection
-                            .choose_multiple(rng, router_size)
-                            .into_iter()
-                            .map(|peer_id| {
-                                Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
-                            })
-                            .collect();
-                        let router_list = Router::from(router_id, candidate_list)
-                            .k_closest(router_id, router_size);
-                        a.insert(router_id, router_list);
-                        a
-                    }
-                )
-                ;
+    pub fn routing(mut self, collection: &Vec<PeerId>, router_size: usize) -> Result<Self, Box<dyn std::error::Error>> {
+
+        // #[cfg(feature="rayon")]
+        // let routes = collection
+        //     .par_iter()
+        //     .map(|peer_id| {
+        //         let rng = &mut rand::thread_rng();
+        //         let router_list: Vec<PeerId> = collection
+        //             .choose_multiple(rng, router_size)
+        //             .par_bridge()
+        //             .into_par_iter()
+        //             .map(|x| {
+        //                 *x
+        //             })
+        //             .collect();
+        //         (*peer_id, router_list)
+        //     })
+        //     .fold( || HashMap::new(),
+        //         | mut a: HashMap<PeerId, Vec<Route>>, router: (PeerId, Vec<PeerId>)|
+        //         {
+        //             let router_id = router.0;
+        //             let router_key = Key::from(router_id);
+        //             let rng = &mut rand::thread_rng();
+        //             let candidate_list = collection
+        //                 .choose_multiple(rng, router_size)
+        //                 .par_bridge()
+        //                 .into_par_iter()
+        //                 .map(|peer_id| {
+        //                     Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
+        //                 })
+        //                 .collect();
+        //             let router_list = Router::from(router_id, candidate_list)
+        //                 .k_closest(router_id, router_size);
+        //             a.insert(router_id, router_list);
+        //             a
+        //         }
+        //     )
+        //     .reduce( || HashMap::new(),
+        //         | mut a: HashMap<PeerId, Vec<Route>>, router: (PeerId, Vec<PeerId>)|
+        //         {
+        //             let router_id = router.0;
+        //             let router_key = Key::from(router_id);
+        //             let rng = &mut rand::thread_rng();
+        //             let candidate_list = collection
+        //                 .choose_multiple(rng, router_size)
+        //                 .par_bridge()
+        //                 .into_par_iter()
+        //                 .map(|peer_id| {
+        //                     Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
+        //                 })
+        //                 .collect();
+        //             let router_list = Router::from(router_id, candidate_list)
+        //                 .k_closest(router_id, router_size);
+        //             a.insert(router_id, router_list);
+        //             a
+        //         }
+        //     );
+        // #[cfg(not(feature="rayon"))]
+        let routes = collection
+            .iter()
+            .map(|peer_id| {
+                let rng = &mut rand::thread_rng();
+                let router_list: Vec<PeerId> = collection
+                    .choose_multiple(rng, router_size)
+                    .into_iter()
+                    .map(|x| {
+                        *x
+                    })
+                    .collect();
+                (*peer_id, router_list)
+            })
+            .fold( HashMap::new(),
+            | mut a: HashMap<PeerId, Vec<Route>>, peer_id: (PeerId, Vec<PeerId>)|
+            {
+                let router_id = peer_id.0;
+                let router_key = Key::from(router_id);
+                let rng = &mut rand::thread_rng();
+                let candidate_list = collection
+                    .choose_multiple(rng, router_size)
+                    .into_iter()
+                    .map(|peer_id| {
+                        Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
+                    })
+                    .collect();
+                let router_list = Router::from(router_id, candidate_list)
+                    .k_closest(router_id, router_size);
+                a.insert(router_id, router_list);
+                a
+            }
+            )
+            ;
+        self.routes = routes;
+        let rng = &mut rand::thread_rng();
+        let router_list: Vec<PeerId> = collection
+            .choose_multiple(rng, router_size)
+            .into_iter()
+            .map(|x| {
+                *x
+            })
+            .collect();
         Ok(self)
     }
 }

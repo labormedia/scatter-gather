@@ -17,10 +17,10 @@ use rayon::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    println!("Generating Distributed Hash Table.");
+    println!("Generating Distributed Hash Table.\n This could take some time depending on the computational resources.");
     let mut rng = rand::thread_rng();
-    const NETWORK_SIZE: usize = 1_000_000;
-    const ROUTER_SIZE: usize = 7;
+    const NETWORK_SIZE: usize = 5_000_000;
+    const ROUTER_SIZE: usize = 20;
     #[cfg(feature="rayon")]
     let collection: Vec<PeerId> = (0..NETWORK_SIZE)
         .par_bridge()
@@ -30,14 +30,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .collect();
     #[cfg(not(feature="rayon"))]
     let collection: Vec<PeerId> = (0..NETWORK_SIZE)
-        // .iter()
         .map(|_| {
             PeerId::random()
         })
         .collect();
     let origin = collection.choose(&mut rng).unwrap();
     let target = collection.choose(&mut rng).unwrap();
-    let dht = DHT::new().routing(collection.to_vec(), ROUTER_SIZE)?;
+    let dht = DHT::new().routing(&collection, ROUTER_SIZE)?;
     let origin_list = match dht.routes.get(&origin.clone()) {
         Some(value) => {
             value.clone()
