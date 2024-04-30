@@ -30,7 +30,8 @@ prost-build = "0.11"
 [features]
 serde = []
 tokio = ["dep:tokio"]
-dht = ["dep:rayon"]
+rayon = ["dep:rayon"]
+dht = []
 
 [[example]]
 name = "basic-dht-simulation"

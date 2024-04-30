@@ -3,6 +3,7 @@ use crate::xor::{
     Distance,
     Key
 };
+#[cfg(feature="rayon")]
 use rayon::prelude::*;
 // use rand::prelude::SliceRandom;
 use rand::prelude::SliceRandom;
@@ -28,10 +29,19 @@ impl DHT {
                 .iter()
                 .map(|peer_id| {
                     let rng = &mut rand::thread_rng();
+                    #[cfg(feature="rayon")]
                     let router_list: Vec<PeerId> = collection
                         .choose_multiple(rng, router_size)
                         .par_bridge()
                         .into_par_iter()
+                        .map(|x| {
+                            *x
+                        })
+                        .collect();
+                    #[cfg(not(feature="rayon"))]
+                    let router_list: Vec<PeerId> = collection
+                        .choose_multiple(rng, router_size)
+                        .into_iter()
                         .map(|x| {
                             *x
                         })
@@ -44,10 +54,19 @@ impl DHT {
                         let router_id = peer_id.0;
                         let router_key = Key::from(router_id);
                         let rng = &mut rand::thread_rng();
+                        #[cfg(feature="rayon")]
                         let candidate_list = collection
                             .choose_multiple(rng, router_size)
                             .par_bridge()
                             .into_par_iter()
+                            .map(|peer_id| {
+                                Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
+                            })
+                            .collect();
+                        #[cfg(not(feature="rayon"))]
+                        let candidate_list = collection
+                            .choose_multiple(rng, router_size)
+                            .into_iter()
                             .map(|peer_id| {
                                 Route(*peer_id, router_key.distance(&Key::from(*peer_id)))
                             })
@@ -171,6 +190,33 @@ impl<'a> Router {
     pub fn sort(mut self) {
         self.peer_list.sort();
     }
+
+    #[cfg(feature="rayon")]
+    pub fn closest(self, peer_id: PeerId) -> Route {
+        let search_key = Key::from(peer_id);
+        self
+            .peer_list
+            .par_iter()
+            .fold( || Route(self.router_id, Distance::MAX), |min, router_id| {
+                let key_other = Key::from(router_id.0);
+                let distance = search_key.distance(&key_other);
+                if min.1 <= distance {
+                    min
+                } else {
+                    Route(router_id.0, distance)
+                }
+            }   )
+            .reduce( || Route(self.router_id, Distance::MAX), |min, router_id| {
+                let key_other = Key::from(router_id.0);
+                let distance = search_key.distance(&key_other);
+                if min.1 <= distance {
+                    min
+                } else {
+                    Route(router_id.0, distance)
+                }
+            }   )
+        }
+    #[cfg(not(feature="rayon"))]
     pub fn closest(self, peer_id: PeerId) -> Route {
         let search_key = Key::from(peer_id);
         self
@@ -188,6 +234,7 @@ impl<'a> Router {
     }
     pub fn k_closest(self, peer_id: PeerId, k: usize) -> Vec<Route> {
         let search_key = Key::from(peer_id);
+        #[cfg(feature="rayon")]
         let mut routes: Vec<Route> = self
             .peer_list
             .par_iter()
@@ -196,7 +243,19 @@ impl<'a> Router {
                 Route(router_id.0, search_key.distance(&key_other))
             })
             .collect();
+        #[cfg(not(feature="rayon"))]
+        let mut routes: Vec<Route> = self
+            .peer_list
+            .iter()
+            .map( |router_id| {
+                let key_other = Key::from(router_id.0);
+                Route(router_id.0, search_key.distance(&key_other))
+            })
+            .collect();
+        #[cfg(feature="rayon")]
         routes.par_sort();
+        #[cfg(not(feature="rayon"))]
+        routes.sort();
         routes.dedup();
         routes
             .into_iter()

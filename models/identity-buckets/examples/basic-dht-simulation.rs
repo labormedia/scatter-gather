@@ -6,6 +6,7 @@ use identity_buckets::{
         Router
     }
 };
+#[cfg(feature="rayon")]
 use rayon::{
     prelude::*,//{ParallelSliceMut, ParallelBridge},
     iter::{
@@ -20,8 +21,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let mut rng = rand::thread_rng();
     const NETWORK_SIZE: usize = 1_000_000;
     const ROUTER_SIZE: usize = 7;
+    #[cfg(feature="rayon")]
     let collection: Vec<PeerId> = (0..NETWORK_SIZE)
-        .into_par_iter()
+        .par_bridge()
+        .map(|_| {
+            PeerId::random()
+        })
+        .collect();
+    #[cfg(not(feature="rayon"))]
+    let collection: Vec<PeerId> = (0..NETWORK_SIZE)
+        // .iter()
         .map(|_| {
             PeerId::random()
         })
@@ -44,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let router = Router::from(initial_peer.0, initial_list);
     const K: usize = 3;
     let mut closest = router.k_closest(*target, K);
+    #[cfg(feature="rayon")]
     while closest[0].1.ilog2() != None {
         closest = closest
             .par_iter()
@@ -57,6 +67,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             })
             .collect();
         closest.par_sort();
+        println!("Closest: {:?}", closest[0]);
+    }
+    #[cfg(not(feature="rayon"))]
+    while closest[0].1.ilog2() != None {
+        closest = closest
+            .iter()
+            .flat_map(|x| {
+                Router::from(x.0, dht
+                    .routes
+                    .get(&x.0)
+                    .expect("Couldn't find node.")
+                    .clone())
+                    .k_closest(*target, K)
+            })
+            .collect();
+        closest.sort();
         println!("Closest: {:?}", closest[0]);
     }
     println!("Closests to {target:?} from {origin:?} : {:?}", closest[0]);
